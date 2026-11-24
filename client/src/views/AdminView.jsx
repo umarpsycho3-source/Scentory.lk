@@ -924,7 +924,21 @@ export default function AdminView({ onBackToShop }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update settings');
-      alert('Store & Bank Settings saved successfully!');
+
+      const newSettings = data.settings || settings;
+      try {
+        localStorage.setItem('scentory_settings', JSON.stringify(newSettings));
+      } catch (e) {}
+
+      // Broadcast instant update to all views and browser tabs
+      window.dispatchEvent(new CustomEvent('scentory-settings-updated', { detail: newSettings }));
+      try {
+        const channel = new BroadcastChannel('scentory_channel');
+        channel.postMessage({ type: 'SETTINGS_UPDATED', settings: newSettings });
+        channel.close();
+      } catch (e) {}
+
+      alert('Store & Bank Settings saved successfully and updated live on the website!');
     } catch (err) {
       alert(err.message);
     }
@@ -3948,19 +3962,29 @@ export default function AdminView({ onBackToShop }) {
                             type="file"
                             accept="video/mp4,video/webm"
                             className="hidden"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              if (file.size > 20 * 1024 * 1024) {
-                                alert('Video file size exceeds 20MB limit. For large 4K files, please paste a direct cloud video URL above.');
+                              if (file.size > 30 * 1024 * 1024) {
+                                alert('Video file size exceeds 30MB limit. For large files, please paste a direct cloud video URL above.');
                                 return;
                               }
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                setSettings({ ...settings, heroVideoUrl: reader.result });
-                                alert('New video loaded successfully! Click "Save Store Settings" below to publish it live to the homepage.');
-                              };
-                              reader.readAsDataURL(file);
+                              try {
+                                const formData = new FormData();
+                                formData.append('video', file);
+                                const uploadRes = await fetch('/api/admin/upload-video', {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${token}` },
+                                  body: formData
+                                });
+                                const uploadData = await uploadRes.json();
+                                if (!uploadRes.ok) throw new Error(uploadData.message || 'Video upload failed');
+                                
+                                setSettings(prev => ({ ...prev, heroVideoUrl: uploadData.videoUrl }));
+                                alert('Commercial video uploaded and set successfully! Click "Save Store Settings" below to publish it live.');
+                              } catch (err) {
+                                alert('Video upload error: ' + err.message);
+                              }
                             }}
                           />
                           <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-gray-300 hover:text-white transition-colors">

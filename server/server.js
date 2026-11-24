@@ -118,12 +118,13 @@ app.get('/sitemap.xml', (req, res) => {
   res.send(xml);
 });
 
-// Serve hero video directly
-app.get('/hero-perfume-video.mp4', (req, res) => {
-  const vidPath = path.join(__dirname, 'uploads', 'hero-perfume-video.mp4');
-  if (fs.existsSync(vidPath)) {
-    return res.sendFile(vidPath);
-  }
+// Serve hero videos directly with streaming and range support
+app.get(['/hero-perfume-video.mp4', '/hero-uploaded-video.mp4'], (req, res) => {
+  const filename = req.path.replace('/', '');
+  const p1 = path.join(__dirname, 'uploads', filename);
+  const p2 = path.join(__dirname, '..', 'client', 'public', filename);
+  if (fs.existsSync(p1)) return res.sendFile(p1);
+  if (fs.existsSync(p2)) return res.sendFile(p2);
   res.status(404).send('Video not found');
 });
 

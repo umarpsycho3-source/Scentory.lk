@@ -2,9 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
+let Pool = null;
 let Client = null;
 try {
-  Client = require('pg').Client;
+  const pg = require('pg');
+  Pool = pg.Pool;
+  Client = pg.Client;
 } catch (e) {}
 
 const DB_PATH = path.join(__dirname, 'data', 'database.json');
@@ -99,35 +102,67 @@ function getInitialData() {
 
 class Database {
   constructor() {
-    this.pgClient = null;
+    this.pgPool = null;
     this.connectPromise = null;
+    this.lastSyncTime = 0;
+    this.isSyncing = false;
     this.init();
     const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
-    if (Client && dbUrl) {
-      this.connectPromise = this.connectPg(dbUrl);
+    if (Pool && dbUrl) {
+      this.initPg(dbUrl);
     }
   }
 
-  async ensureConnected() {
-    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
-    if (!Client || !dbUrl) return;
+  initPg(connectionString) {
+    try {
+      this.pgPool = new Pool({
+        connectionString,
+        ssl: { rejectUnauthorized: false },
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000
+      });
 
-    if (!this.pgClient) {
-      if (!this.connectPromise) {
-        this.connectPromise = this.connectPg(dbUrl);
+      this.pgPool.on('error', (err) => {
+        console.error('Supabase pool idle client error:', err.message);
+      });
+
+      this.connectPromise = this.syncFromSupabase();
+    } catch (err) {
+      console.error('Failed to init Supabase pool:', err.message);
+    }
+  }
+
+  async syncFromSupabase() {
+    if (!this.pgPool || this.isSyncing) return;
+    this.isSyncing = true;
+    try {
+      await this.pgPool.query('CREATE TABLE IF NOT EXISTS store_data (id VARCHAR(50) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());');
+      const res = await this.pgPool.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
+      if (res.rows && res.rows.length > 0 && res.rows[0].data) {
+        this.data = res.rows[0].data;
+        this.lastSyncTime = Date.now();
+      } else {
+        await this.pgPool.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
+        this.lastSyncTime = Date.now();
       }
-      try { await this.connectPromise; } catch (e) {}
-    } else {
-      try {
-        const res = await this.pgClient.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
-        if (res.rows && res.rows.length > 0 && res.rows[0].data) {
-          this.data = res.rows[0].data;
-        }
-      } catch (err) {
-        this.pgClient = null;
-        this.connectPromise = this.connectPg(dbUrl);
-        try { await this.connectPromise; } catch (e) {}
-      }
+    } catch (err) {
+      console.error('Supabase sync error:', err.message);
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  // Non-blocking periodic check (throttle to once every 5 seconds, never blocks request)
+  async ensureConnected() {
+    if (!this.pgPool) {
+      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+      if (Pool && dbUrl) this.initPg(dbUrl);
+      return;
+    }
+
+    if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
+      this.syncFromSupabase().catch(() => {});
     }
   }
 
@@ -146,40 +181,16 @@ class Database {
     }
   }
 
-  async connectPg(connectionString) {
-    try {
-      const client = new Client({
-        connectionString,
-        ssl: { rejectUnauthorized: false }
-      });
-      await client.connect();
-      console.log('✅ Connected to Supabase Cloud PostgreSQL!');
-      this.pgClient = client;
-
-      await client.query('CREATE TABLE IF NOT EXISTS store_data (id VARCHAR(50) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());');
-
-      const res = await client.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
-      if (res.rows && res.rows.length > 0 && res.rows[0].data) {
-        this.data = res.rows[0].data;
-        console.log('✅ Synced live store data from Supabase!');
-      } else {
-      await (this.pgClient || client).query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
-        console.log('✅ Seeded clean initial store data to Supabase!');
-      }
-    } catch (err) {
-      console.error('Supabase connection error:', err.message);
-    }
-  }
-
   async save() {
     try { fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8'); } catch (e) {}
-    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
-    if (!this.pgClient && Client && dbUrl) {
-      try { await this.connectPg(dbUrl); } catch (e) {}
+    this.lastSyncTime = Date.now();
+    if (!this.pgPool) {
+      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+      if (Pool && dbUrl) this.initPg(dbUrl);
     }
-    if (this.pgClient) {
+    if (this.pgPool) {
       try {
-        await this.pgClient.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
+        await this.pgPool.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
       } catch (err) {
         console.error('Supabase save error:', err.message);
       }
@@ -328,6 +339,22 @@ class Database {
   // Settings
   getSettings() { return this.data.settings || {}; }
   async updateSettings(updates) {
+    if (updates && updates.heroVideoUrl && updates.heroVideoUrl.startsWith('data:video/')) {
+      try {
+        const matches = updates.heroVideoUrl.match(/^data:video\/\w+;base64,(.+)$/);
+        if (matches) {
+          const videoBuf = Buffer.from(matches[1], 'base64');
+          const videoName = 'hero-uploaded-video.mp4';
+          const p1 = path.join(__dirname, '..', 'client', 'public', videoName);
+          const p2 = path.join(__dirname, 'uploads', videoName);
+          fs.writeFileSync(p1, videoBuf);
+          try { fs.writeFileSync(p2, videoBuf); } catch(e) {}
+          updates.heroVideoUrl = '/' + videoName;
+        }
+      } catch (e) {
+        console.error('Video extraction error:', e);
+      }
+    }
     this.data.settings = { ...this.data.settings, ...updates };
     await this.save();
     return this.data.settings;

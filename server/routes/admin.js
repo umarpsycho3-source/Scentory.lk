@@ -1,8 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const db = require('../db');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+
+const videoStorage = multer.memoryStorage();
+const videoUpload = multer({
+  storage: videoStorage,
+  limits: { fileSize: 30 * 1024 * 1024 } // 30MB
+});
 
 // Apply admin guard to all routes in this router
 router.use(authenticateToken, requireAdmin);
@@ -235,6 +244,27 @@ router.get('/reset-requests', async (req, res) => {
     res.json({ requests });
   } catch (err) {
     res.status(500).json({ message: 'Failed to get reset requests.' });
+  }
+});
+
+// Upload commercial hero video file
+router.post('/upload-video', videoUpload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No video file provided.' });
+    const filename = 'hero-uploaded-video.mp4';
+    const publicPath = path.join(__dirname, '..', '..', 'client', 'public', filename);
+    const serverPath = path.join(__dirname, '..', 'uploads', filename);
+
+    fs.writeFileSync(publicPath, req.file.buffer);
+    try { fs.writeFileSync(serverPath, req.file.buffer); } catch (e) {}
+
+    const videoUrl = '/' + filename;
+    await db.updateSettings({ heroVideoUrl: videoUrl });
+
+    res.json({ message: 'Video uploaded successfully!', videoUrl });
+  } catch (err) {
+    console.error('Video upload error:', err);
+    res.status(500).json({ message: 'Failed to upload video file.' });
   }
 });
 

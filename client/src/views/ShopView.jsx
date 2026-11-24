@@ -8,17 +8,58 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
   const { toggleFavourite, isFavourite } = useFavourites();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [shopSettings, setShopSettings] = useState({
-    shopBadge: 'Exclusive Fragrance Collection',
-    shopTitle: 'Distinguished Scents For Every Occasion',
-    shopDescription: 'Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+  const [shopSettings, setShopSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        return {
+          shopBadge: s.shopBadge || 'Exclusive Fragrance Collection',
+          shopTitle: s.shopTitle || 'Distinguished Scents For Every Occasion',
+          shopDescription: s.shopDescription || 'Available in precision travel decants (10ml, 30ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+        };
+      }
+    } catch (e) {}
+    return {
+      shopBadge: 'Exclusive Fragrance Collection',
+      shopTitle: 'Distinguished Scents For Every Occasion',
+      shopDescription: 'Available in precision travel decants (10ml, 30ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+    };
   });
 
   useEffect(() => {
+    const handleSettingsUpdate = (e) => {
+      const s = e.detail;
+      if (s) {
+        setShopSettings(prev => ({
+          shopBadge: s.shopBadge || prev.shopBadge,
+          shopTitle: s.shopTitle || prev.shopTitle,
+          shopDescription: s.shopDescription || prev.shopDescription
+        }));
+      }
+    };
+    window.addEventListener('scentory-settings-updated', handleSettingsUpdate);
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('scentory_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED' && event.data.settings) {
+          const s = event.data.settings;
+          setShopSettings(prev => ({
+            shopBadge: s.shopBadge || prev.shopBadge,
+            shopTitle: s.shopTitle || prev.shopTitle,
+            shopDescription: s.shopDescription || prev.shopDescription
+          }));
+        }
+      };
+    } catch (e) {}
+
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
         if (data) {
+          try { localStorage.setItem('scentory_settings', JSON.stringify(data)); } catch (e) {}
           setShopSettings(prev => ({
             shopBadge: data.shopBadge || prev.shopBadge,
             shopTitle: data.shopTitle || prev.shopTitle,
@@ -27,6 +68,11 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
         }
       })
       .catch(() => {});
+
+    return () => {
+      window.removeEventListener('scentory-settings-updated', handleSettingsUpdate);
+      if (channel) channel.close();
+    };
   }, []);
 
   // Filters

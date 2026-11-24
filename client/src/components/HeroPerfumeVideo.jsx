@@ -6,12 +6,50 @@ export default function HeroPerfumeVideo() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [videoSrc, setVideoSrc] = useState('/hero-perfume-video.mp4');
-  const [videoFit, setVideoFit] = useState('contain');
-  const [videoAspect, setVideoAspect] = useState('auto');
-  const [videoMaxHeight, setVideoMaxHeight] = useState(540);
+  const [videoSrc, setVideoSrc] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        if (s.heroVideoUrl) return s.heroVideoUrl;
+      }
+    } catch (e) {}
+    return '/hero-uploaded-video.mp4';
+  });
+  const [videoFit, setVideoFit] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) return JSON.parse(cached).heroVideoFit || 'contain';
+    } catch (e) {}
+    return 'contain';
+  });
+  const [videoAspect, setVideoAspect] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) return JSON.parse(cached).heroVideoAspect || 'auto';
+    } catch (e) {}
+    return 'auto';
+  });
+  const [videoMaxHeight, setVideoMaxHeight] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) return parseInt(JSON.parse(cached).heroVideoHeight, 10) || 540;
+    } catch (e) {}
+    return 540;
+  });
 
   useEffect(() => {
+    const handleUpdate = (e) => {
+      const data = e.detail;
+      if (data) {
+        if (data.heroVideoUrl) setVideoSrc(data.heroVideoUrl);
+        if (data.heroVideoFit) setVideoFit(data.heroVideoFit);
+        if (data.heroVideoAspect) setVideoAspect(data.heroVideoAspect);
+        if (data.heroVideoHeight) setVideoMaxHeight(parseInt(data.heroVideoHeight, 10) || 540);
+      }
+    };
+    window.addEventListener('scentory-settings-updated', handleUpdate);
+
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
@@ -23,6 +61,8 @@ export default function HeroPerfumeVideo() {
         }
       })
       .catch(() => {});
+
+    return () => window.removeEventListener('scentory-settings-updated', handleUpdate);
   }, []);
 
   useEffect(() => {

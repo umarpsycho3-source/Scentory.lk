@@ -14,12 +14,63 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
   const [isAddReviewOpen, setIsAddReviewOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [heroSettings, setHeroSettings] = useState({
-    heroBadge: "WE'RE LIVE • SCENTORY.LK",
-    heroTitle: "A New Destination For Your",
-    heroSubtitle: "Signature Scent.",
-    heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+  const [heroSettings, setHeroSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        return {
+          heroBadge: s.heroBadge || "WE'RE LIVE • SCENTORY.LK",
+          heroTitle: s.heroTitle || "A New Destination For Your",
+          heroSubtitle: s.heroSubtitle || "Signature Scent.",
+          heroDescription: s.heroDescription || "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 30ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+        };
+      }
+    } catch (e) {}
+    return {
+      heroBadge: "WE'RE LIVE • SCENTORY.LK",
+      heroTitle: "A New Destination For Your",
+      heroSubtitle: "Signature Scent.",
+      heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 30ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+    };
   });
+
+  // Real-time synchronization across admin updates & tabs
+  useEffect(() => {
+    const handleSettingsUpdate = (e) => {
+      const s = e.detail;
+      if (s) {
+        setHeroSettings(prev => ({
+          heroBadge: s.heroBadge || prev.heroBadge,
+          heroTitle: s.heroTitle || prev.heroTitle,
+          heroSubtitle: s.heroSubtitle || prev.heroSubtitle,
+          heroDescription: s.heroDescription || prev.heroDescription
+        }));
+      }
+    };
+    window.addEventListener('scentory-settings-updated', handleSettingsUpdate);
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('scentory_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED' && event.data.settings) {
+          const s = event.data.settings;
+          setHeroSettings(prev => ({
+            heroBadge: s.heroBadge || prev.heroBadge,
+            heroTitle: s.heroTitle || prev.heroTitle,
+            heroSubtitle: s.heroSubtitle || prev.heroSubtitle,
+            heroDescription: s.heroDescription || prev.heroDescription
+          }));
+        }
+      };
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('scentory-settings-updated', handleSettingsUpdate);
+      if (channel) channel.close();
+    };
+  }, []);
 
   const loadData = () => {
     Promise.all([
@@ -38,6 +89,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           setTotalReviews(reviewsData.total || 0);
         }
         if (settingsData) {
+          try { localStorage.setItem('scentory_settings', JSON.stringify(settingsData)); } catch (e) {}
           setHeroSettings(prev => ({
             heroBadge: settingsData.heroBadge || prev.heroBadge,
             heroTitle: settingsData.heroTitle || prev.heroTitle,
