@@ -2,23 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-let MongoClient = null;
+let Client = null;
 try {
-  MongoClient = require('mongodb').MongoClient;
+  Client = require('pg').Client;
 } catch (e) {}
 
 const DB_PATH = path.join(__dirname, 'data', 'database.json');
 
-// Ensure data folder exists (wrapped safely for serverless runtimes)
+// Ensure data folder exists
 try {
   if (!fs.existsSync(path.join(__dirname, 'data'))) {
     fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
   }
-} catch (e) {
-  // Read-only filesystem in serverless, fallback handled by MongoDB Atlas
-}
+} catch (e) {}
 
-// Initial default seed
 function getInitialData() {
   const salt = bcrypt.genSaltSync(10);
   const adminPasswordHash = bcrypt.hashSync('admin123', salt);
@@ -92,21 +89,24 @@ function getInitialData() {
 
 class Database {
   constructor() {
-    this.mongoCollection = null;
-    this.mongoClient = null;
+    this.pgClient = null;
     this.connectPromise = null;
     this.init();
-    if (process.env.MONGODB_URI && MongoClient) {
-      this.connectPromise = this.connectMongo(process.env.MONGODB_URI);
+    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+    if (Client && dbUrl) {
+      this.connectPromise = this.connectPg(dbUrl);
     }
   }
 
   async ensureConnected() {
     if (this.connectPromise) {
       try { await this.connectPromise; } catch (e) {}
-    } else if (process.env.MONGODB_URI && MongoClient && !this.mongoCollection) {
-      this.connectPromise = this.connectMongo(process.env.MONGODB_URI);
-      try { await this.connectPromise; } catch (e) {}
+    } else {
+      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+      if (Client && dbUrl && !this.pgClient) {
+        this.connectPromise = this.connectPg(dbUrl);
+        try { await this.connectPromise; } catch (e) {}
+      }
     }
   }
 
@@ -121,49 +121,47 @@ class Database {
         this.data = JSON.parse(raw);
       }
     } catch (err) {
-      console.warn('Using in-memory/seed data:', err.message);
       this.data = getInitialData();
     }
   }
 
-  async connectMongo(uri) {
+  async connectPg(connectionString) {
     try {
-      this.mongoClient = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
-      await this.mongoClient.connect();
-      console.log('✅ Connected to MongoDB Atlas Cloud Database!');
-      const db = this.mongoClient.db('scentory');
-      this.mongoCollection = db.collection('store_data');
+      const client = new Client({
+        connectionString,
+        ssl: { rejectUnauthorized: false }
+      });
+      await client.connect();
+      console.log('✅ Connected to Supabase Cloud PostgreSQL!');
+      this.pgClient = client;
 
-      const doc = await this.mongoCollection.findOne({ _id: 'main_store_data' });
-      if (doc && doc.data) {
-        this.data = doc.data;
-        console.log('✅ Synced live store data from MongoDB Atlas!');
+      await client.query('CREATE TABLE IF NOT EXISTS store_data (id VARCHAR(50) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());');
+
+      const res = await client.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
+      if (res.rows && res.rows.length > 0 && res.rows[0].data) {
+        this.data = res.rows[0].data;
+        console.log('✅ Synced live store data from Supabase!');
       } else {
-        await this.mongoCollection.updateOne(
-          { _id: 'main_store_data' },
-          { $set: { data: this.data, updatedAt: new Date() } },
-          { upsert: true }
-        );
-        console.log('✅ Seeded initial store data to MongoDB Atlas!');
+      await (this.pgClient || client).query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
+        console.log('✅ Seeded clean initial store data to Supabase!');
       }
     } catch (err) {
-      console.error('MongoDB Atlas connection error, using fallback:', err.message);
+      console.error('Supabase connection error:', err.message);
     }
   }
 
   async save() {
     try { fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8'); } catch (e) {}
-    if (this.mongoCollection) {
+    if (this.pgClient) {
       try {
-        const op = {};
-        op['$set'] = { data: this.data, updatedAt: new Date() };
-        await this.mongoCollection.updateOne({ _id: 'main_store_data' }, op, { upsert: true });
+      await (this.pgClient || client).query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
       } catch (err) {
-        console.error('MongoDB Atlas sync error:', err.message);
+        console.error('Supabase save error:', err.message);
       }
     }
   }
 
+  // Users
   getUsers() { return this.data.users || []; }
   getUserById(id) { return this.getUsers().find(u => u.id === id); }
   getUserByEmail(email) { return this.getUsers().find(u => u.email.toLowerCase() === email.toLowerCase()); }
@@ -221,22 +219,23 @@ class Database {
   // Orders
   getOrders() { return this.data.orders || []; }
   getOrderById(id) { return this.getOrders().find(o => o.id === id); }
-  getUserOrders(userId) { return this.getOrders().filter(o => o.userId === userId); }
-  async addOrder(order) {
+  getOrdersByUserId(userId) { return this.getOrders().filter(o => o.userId === userId); }
+  async addOrder(orderData) {
+    const order = {
+      id: 'SCNT-' + Math.floor(1000 + Math.random() * 9000),
+      createdAt: new Date().toISOString(),
+      orderStatus: 'pending',
+      paymentStatus: 'pending_verification',
+      ...orderData
+    };
     this.data.orders.unshift(order);
-
-    // Increment salesCount and decrement stock for purchased variants
-    order.items.forEach(item => {
-      const prod = this.getProductById(item.productId);
-      if (prod) {
-        prod.salesCount = (prod.salesCount || 0) + item.quantity;
-        const variant = prod.variants?.find(v => v.id === item.variantId);
-        if (variant && variant.stock >= item.quantity) {
-          variant.stock -= item.quantity;
-        }
-      }
+    await this.addNotification({
+      type: 'new_order',
+      title: 'New Bank Transfer Order',
+      message: 'New bank transfer order placed. Verify deposit slip.',
+      orderId: order.id,
+      timestamp: new Date().toISOString()
     });
-
     await this.save();
     return order;
   }
@@ -260,16 +259,14 @@ class Database {
   }
 
   // Reviews
-  getReviews() {
-    if (!this.data.reviews) {
-      this.data.reviews = [];
-    }
-    return this.data.reviews;
-  }
-  async addReview(review) {
-    if (!this.data.reviews) {
-      this.data.reviews = [];
-    }
+  getReviews() { return this.data.reviews || []; }
+  async addReview(reviewData) {
+    const review = {
+      id: 'rev_' + Date.now(),
+      createdAt: new Date().toISOString(),
+      ...reviewData
+    };
+    if (!this.data.reviews) this.data.reviews = [];
     this.data.reviews.unshift(review);
     await this.save();
     return review;
@@ -293,17 +290,10 @@ class Database {
     return this.data.settings;
   }
 
-  // Chat & Custom Perfume Creation Messages
-  getChatMessages() {
-    if (!this.data.chatMessages) {
-      this.data.chatMessages = [];
-    }
-    return this.data.chatMessages;
-  }
+  // Chat
+  getChatMessages() { return this.data.chatMessages || []; }
   async addChatMessage(msg) {
-    if (!this.data.chatMessages) {
-      this.data.chatMessages = [];
-    }
+    if (!this.data.chatMessages) this.data.chatMessages = [];
     this.data.chatMessages.unshift(msg);
     await this.save();
     return msg;
@@ -318,29 +308,16 @@ class Database {
     }
     return null;
   }
-  markChatMessageRead(id) {
-    if (!this.data.chatMessages) return null;
-    const msg = this.data.chatMessages.find(m => m.id === id);
-    if (msg) {
-      msg.read = true;
-      await this.save();
-      return msg;
-    }
-    return null;
-  }
 
-  // Admin Notifications
-  getNotifications() {
-    if (!this.data.notifications) {
-      this.data.notifications = [];
-    }
-    return this.data.notifications;
-  }
+  // Notifications
+  getNotifications() { return this.data.notifications || []; }
   async addNotification(notif) {
-    if (!this.data.notifications) {
-      this.data.notifications = [];
-    }
-    this.data.notifications.unshift(notif);
+    if (!this.data.notifications) this.data.notifications = [];
+    this.data.notifications.unshift({
+      id: 'notif_' + Date.now() + Math.random().toString(36).substring(2, 6),
+      read: false,
+      ...notif
+    });
     if (this.data.notifications.length > 100) {
       this.data.notifications = this.data.notifications.slice(0, 100);
     }
@@ -379,72 +356,42 @@ class Database {
     return null;
   }
 
-  // Password Reset Code Verification System
-  getPasswordResetRequests() {
-    if (!this.data.passwordResetRequests) {
-      this.data.passwordResetRequests = [];
-    }
-    return this.data.passwordResetRequests;
-  }
-
-  async createPasswordResetRequest(email) {
-    if (!this.data.passwordResetRequests) {
-      this.data.passwordResetRequests = [];
-    }
-    const user = this.getUserByEmail(email);
-    if (!user) return null;
-
-    // Generate random secure 6-digit code
+  // Password Reset
+  async createPasswordResetRequest(email, user) {
+    if (!this.data.passwordResetRequests) this.data.passwordResetRequests = [];
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Clear old pending requests for this email
-    this.data.passwordResetRequests = this.data.passwordResetRequests.filter(
-      r => r.email.toLowerCase() !== email.toLowerCase()
-    );
-
     const request = {
-      id: 'rst_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
+      id: 'prr_' + Date.now() + Math.random().toString(36).substring(2, 5),
       userId: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      code: code,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      email: user.email.toLowerCase(),
+      userName: user.name,
+      code,
+      status: 'pending_verification',
+      requestedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 3600000).toISOString()
     };
-
     this.data.passwordResetRequests.unshift(request);
-
-    // Real-time Admin Notification with Code and Customer Details
-    this.addNotification({
-      id: 'notif_' + Date.now(),
-      type: 'user',
-      title: `🔑 Reset Code: ${code}`,
-      message: `Customer ${user.name} (${user.email} | Phone: ${user.phone || 'N/A'}) requested password reset. Verification Code: ${code}`,
-      dataId: request.id,
-      code: code,
-      customerEmail: user.email,
-      customerPhone: user.phone || '',
-      read: false,
+    await this.addNotification({
+      type: 'password_reset_request',
+      title: 'Password Reset Authorization',
+      message: 'Customer requested password reset.',
+      code,
+      email: user.email,
       createdAt: new Date().toISOString()
     });
-
     await this.save();
     return { request, user, code };
   }
 
   getResetRequestByEmail(email) {
     if (!this.data.passwordResetRequests) return null;
-    return this.data.passwordResetRequests.find(
-      r => r.email.toLowerCase() === email.toLowerCase() && r.status === 'pending'
-    );
+    return this.data.passwordResetRequests.find(r => r.email === email.toLowerCase() && r.status === 'pending_verification' && new Date(r.expiresAt) > new Date());
   }
 
-  consumeResetRequest(email, code) {
+  async verifyAndConsumeResetCode(email, code) {
     if (!this.data.passwordResetRequests) return false;
     const reqIndex = this.data.passwordResetRequests.findIndex(
-      r => r.email.toLowerCase() === email.toLowerCase() && String(r.code).trim() === String(code).trim() && r.status === 'pending'
+      r => r.email === email.toLowerCase() && r.code === code.trim() && r.status === 'pending_verification' && new Date(r.expiresAt) > new Date()
     );
     if (reqIndex !== -1) {
       this.data.passwordResetRequests.splice(reqIndex, 1);
@@ -455,4 +402,5 @@ class Database {
   }
 }
 
-module.exports = new Database();
+const db = new Database();
+module.exports = db;
