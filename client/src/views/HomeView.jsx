@@ -23,7 +23,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           heroBadge: s.heroBadge || "WE'RE LIVE • SCENTORY.LK",
           heroTitle: s.heroTitle || "A New Destination For Your",
           heroSubtitle: s.heroSubtitle || "Signature Scent.",
-          heroDescription: s.heroDescription || "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 30ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+          heroDescription: s.heroDescription || "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
         };
       }
     } catch (e) {}
@@ -31,7 +31,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
       heroBadge: "WE'RE LIVE • SCENTORY.LK",
       heroTitle: "A New Destination For Your",
       heroSubtitle: "Signature Scent.",
-      heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 30ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+      heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
     };
   });
 
@@ -194,71 +194,85 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-8">
-          {featuredProducts.slice(0, 4).map((product) => {
-            const lowestPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
-            const isFav = isFavourite(product.id);
+        {featuredProducts.length === 0 ? (
+          <div className="glass-panel p-12 rounded-3xl border border-[#d4af37]/25 text-center space-y-3 max-w-lg mx-auto">
+            <Sparkles className="w-8 h-8 text-[#d4af37] mx-auto opacity-70 animate-pulse" />
+            <h3 className="font-serif-luxury text-xl font-bold text-white">New Collection Launching Soon</h3>
+            <p className="text-xs text-gray-400">Our artisan flacons and custom decants are currently being prepared. Check back shortly or browse our full fragrance catalogue.</p>
+            <button
+              onClick={onExploreShop}
+              className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#d4af37]/20 border border-[#d4af37]/40 text-[#f3e5ab] text-xs uppercase tracking-wider hover:bg-[#d4af37] hover:text-black transition-all cursor-pointer"
+            >
+              Explore Shop
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-8">
+            {featuredProducts.slice(0, 4).map((product) => {
+              const lowestPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
+              const isFav = isFavourite(product.id);
 
-            return (
-              <div
-                key={product.id}
-                onClick={() => onSelectProduct(product)}
-                className="group glass-panel rounded-2xl overflow-hidden border border-[#d4af37]/20 hover:border-[#d4af37] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1.5 shadow-xl bg-[#0d0d14]"
-              >
-                <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
-                  <img
-                    src={product.images?.[0]}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
-                  />
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => onSelectProduct(product)}
+                  className="group glass-panel rounded-2xl overflow-hidden border border-[#d4af37]/20 hover:border-[#d4af37] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1.5 shadow-xl bg-[#0d0d14]"
+                >
+                  <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
+                    <img
+                      src={product.images?.[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
+                    />
 
-                  {/* Favourite Heart Action Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavourite(product.id);
-                    }}
-                    title={isFav ? "Remove from favourites" : "Add to favourites"}
-                    aria-label="Toggle favourite"
-                    className="absolute top-2 right-2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-md cursor-pointer"
-                  >
-                    <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
-                  </button>
+                    {/* Favourite Heart Action Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavourite(product.id);
+                      }}
+                      title={isFav ? "Remove from favourites" : "Add to favourites"}
+                      aria-label="Toggle favourite"
+                      className="absolute top-2 right-2 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-md cursor-pointer"
+                    >
+                      <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
+                    </button>
 
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#aa820a] text-black font-bold text-[9px] sm:text-xs uppercase tracking-wider shadow-lg">
-                    {product.badge || 'Signature'}
-                  </div>
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#aa820a] text-black font-bold text-[9px] sm:text-xs uppercase tracking-wider shadow-lg">
+                      {product.badge || 'Signature'}
+                    </div>
 
-                  {/* Price overlay on bottom of image for mobile */}
-                  <div className="absolute bottom-2 inset-x-2 p-1.5 sm:p-2 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 flex items-center justify-between">
-                    <div>
-                      <span className="text-[8px] sm:text-[9px] text-gray-400 block uppercase leading-none">From</span>
-                      <span className="font-serif-luxury text-xs sm:text-sm font-bold gold-text-gradient whitespace-nowrap">
-                        Rs. {lowestPrice.toLocaleString()}
+                    {/* Price overlay on bottom of image for mobile */}
+                    <div className="absolute bottom-2 inset-x-2 p-1.5 sm:p-2 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 flex items-center justify-between">
+                      <div>
+                        <span className="text-[8px] sm:text-[9px] text-gray-400 block uppercase leading-none">From</span>
+                        <span className="font-serif-luxury text-xs sm:text-sm font-bold gold-text-gradient whitespace-nowrap">
+                          Rs. {lowestPrice.toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-[8px] sm:text-[9px] text-[#f3e5ab] uppercase tracking-wider border border-[#d4af37]/30 px-1.5 py-0.5 rounded font-mono">
+                        {(product.variants || []).length} Sizes
                       </span>
                     </div>
-                    <span className="text-[8px] sm:text-[9px] text-[#f3e5ab] uppercase tracking-wider border border-[#d4af37]/30 px-1.5 py-0.5 rounded font-mono">
-                      {(product.variants || []).length} Sizes
+                  </div>
+
+                  <div className="p-3 sm:p-5">
+                    <span className="text-[9px] sm:text-[11px] text-[#d4af37] uppercase tracking-wider block mb-0.5 line-clamp-1">
+                      {product.scentFamily} • {product.gender}
                     </span>
+                    <h3 className="font-serif-luxury text-xs sm:text-lg font-bold text-white group-hover:text-[#d4af37] transition-colors line-clamp-1 leading-tight">
+                      {product.name}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 sm:line-clamp-2 hidden xs:block font-light">
+                      {product.description}
+                    </p>
                   </div>
                 </div>
-
-                <div className="p-3 sm:p-5">
-                  <span className="text-[9px] sm:text-[11px] text-[#d4af37] uppercase tracking-wider block mb-0.5 line-clamp-1">
-                    {product.scentFamily} • {product.gender}
-                  </span>
-                  <h3 className="font-serif-luxury text-xs sm:text-lg font-bold text-white group-hover:text-[#d4af37] transition-colors line-clamp-1 leading-tight">
-                    {product.name}
-                  </h3>
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 sm:line-clamp-2 hidden xs:block font-light">
-                    {product.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* AUTOMATICALLY CALCULATED TRENDING PRODUCTS SECTION */}

@@ -253,9 +253,6 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const removed = await db.deleteProduct(req.params.id);
-    if (!removed) {
-      return res.status(404).json({ message: 'Product not found.' });
-    }
     res.json({ message: 'Product deleted successfully.', product: removed });
   } catch (err) {
     console.error('Error deleting product:', err);

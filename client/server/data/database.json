@@ -20,7 +20,8 @@
       "swiftCode": "CCEYLKX",
       "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below."
     },
-    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons"
+    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons",
+    "heroVideoUrl": "/hero-uploaded-video.mp4"
   },
   "users": [
     {
@@ -35,60 +36,7 @@
       "createdAt": "2026-11-24T08:56:42.428Z"
     }
   ],
-  "products": [
-    {
-      "id": "prod_oud_royale",
-      "name": "Oud Royale Impérial",
-      "gender": "Unisex",
-      "scentFamily": "Oriental Woody Oud",
-      "badge": "Signature Masterpiece",
-      "isFeatured": true,
-      "rating": 5,
-      "reviewCount": 0,
-      "description": "Opulent Cambodian agarwood blended with amber, smoky leather, and Turkish damask rose. Sri Lanka signature luxury extrait de parfum.",
-      "images": [
-        "/brand-logo.png"
-      ],
-      "variants": [
-        {
-          "id": "v_5ml",
-          "size": "5ml Pocket Spray",
-          "price": 1950,
-          "discountPrice": 1750,
-          "stock": 50
-        },
-        {
-          "id": "v_10ml",
-          "size": "10ml Travel Atomizer",
-          "price": 3800,
-          "discountPrice": 3400,
-          "stock": 40
-        },
-        {
-          "id": "v_20ml",
-          "size": "20ml Decant Flacon",
-          "price": 7200,
-          "discountPrice": 6500,
-          "stock": 25
-        },
-        {
-          "id": "v_50ml",
-          "size": "50ml Signature Bottle",
-          "price": 16500,
-          "discountPrice": 14900,
-          "stock": 15
-        },
-        {
-          "id": "v_100ml",
-          "size": "100ml Pure Extrait",
-          "price": 28500,
-          "discountPrice": 25900,
-          "stock": 10
-        }
-      ],
-      "createdAt": "2026-11-24T08:56:42.443Z"
-    }
-  ],
+  "products": [],
   "orders": [],
   "reviews": [],
   "notifications": [],

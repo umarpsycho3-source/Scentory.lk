@@ -38,75 +38,7 @@
   ],
   "orders": [],
   "reviews": [],
-  "products": [
-    {
-      "id": "prod_mwuqp614suae",
-      "name": "Aqua Pour Homme",
-      "badge": "Signature Edition",
-      "notes": {
-        "top": [
-          "Bergamot",
-          "Neroli",
-          "Lemon"
-        ],
-        "base": [
-          "Cedarwood",
-          "Patchouli",
-          "Musk"
-        ],
-        "heart": [
-          "Marine Note",
-          "Lavender",
-          "Rosemary"
-        ]
-      },
-      "gender": "unisex",
-      "images": [
-        "/product-prod_mwuqp614suae-0.jpg"
-      ],
-      "tagline": "Extrait De Parfum",
-      "variants": [
-        {
-          "id": "v1",
-          "sku": "DEC-10ML",
-          "size": "10ml Pocket Spray",
-          "price": 2000,
-          "stock": 11,
-          "discountPrice": 1750
-        },
-        {
-          "id": "v2",
-          "sku": "DEC-30ML",
-          "size": "30ml Travel Spray",
-          "price": 4800,
-          "stock": 11,
-          "discountPrice": 4200
-        },
-        {
-          "id": "v3",
-          "sku": "DEC-50ML",
-          "size": "50ml Luxury Decant",
-          "price": 6500,
-          "stock": 11,
-          "discountPrice": 5800
-        },
-        {
-          "id": "v4",
-          "sku": "FLA-100ML",
-          "size": "100ml Signature Flacon",
-          "price": 11000,
-          "stock": 11,
-          "discountPrice": 9900
-        }
-      ],
-      "createdAt": "2026-11-24T13:37:54.376Z",
-      "updatedAt": "2026-11-24T14:11:17.701Z",
-      "isFeatured": true,
-      "salesCount": 0,
-      "description": "",
-      "scentFamily": "Fresh Aromatic"
-    }
-  ],
+  "products": [],
   "settings": {
     "address": "Ulapane, Sri Lanka",
     "currency": "LKR",

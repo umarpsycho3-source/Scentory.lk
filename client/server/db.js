@@ -71,27 +71,7 @@ function getInitialData() {
         createdAt: new Date().toISOString()
       }
     ],
-    products: [
-      {
-        id: 'prod_oud_royale',
-        name: 'Oud Royale Impérial',
-        gender: 'Unisex',
-        scentFamily: 'Oriental Woody Oud',
-        badge: 'Signature Masterpiece',
-        isFeatured: true,
-        rating: 5.0,
-        reviewCount: 0,
-        description: 'Opulent Cambodian agarwood blended with amber, smoky leather, and Turkish damask rose. Sri Lanka signature luxury extrait de parfum.',
-        images: ['/brand-logo.png'],
-        variants: [
-          { id: 'v_10ml', size: '10ml Travel Atomizer', price: 3800, discountPrice: 3400, stock: 40 },
-          { id: 'v_20ml', size: '20ml Decant Flacon', price: 7200, discountPrice: 6500, stock: 25 },
-          { id: 'v_50ml', size: '50ml Signature Bottle', price: 16500, discountPrice: 14900, stock: 15 },
-          { id: 'v_100ml', size: '100ml Pure Extrait', price: 28500, discountPrice: 25900, stock: 10 }
-        ],
-        createdAt: new Date().toISOString()
-      }
-    ],
+    products: [],
     orders: [],
     reviews: [],
     notifications: [],
@@ -140,7 +120,23 @@ class Database {
       await this.pgPool.query('CREATE TABLE IF NOT EXISTS store_data (id VARCHAR(50) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());');
       const res = await this.pgPool.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
       if (res.rows && res.rows.length > 0 && res.rows[0].data) {
-        this.data = res.rows[0].data;
+        const remote = res.rows[0].data;
+        const initial = getInitialData();
+        this.data = {
+          ...initial,
+          ...remote,
+          settings: {
+            ...initial.settings,
+            ...(remote.settings || {})
+          },
+          products: Array.isArray(remote.products) ? remote.products : [],
+          users: Array.isArray(remote.users) && remote.users.length > 0 ? remote.users : initial.users,
+          orders: Array.isArray(remote.orders) ? remote.orders : [],
+          reviews: Array.isArray(remote.reviews) ? remote.reviews : [],
+          notifications: Array.isArray(remote.notifications) ? remote.notifications : [],
+          chatMessages: Array.isArray(remote.chatMessages) ? remote.chatMessages : [],
+          passwordResetRequests: Array.isArray(remote.passwordResetRequests) ? remote.passwordResetRequests : []
+        };
         this.lastSyncTime = Date.now();
       } else {
         await this.pgPool.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
@@ -153,15 +149,20 @@ class Database {
     }
   }
 
-  // Non-blocking periodic check (throttle to once every 5 seconds, never blocks request)
+  // Ensures Supabase is connected and initially synced before processing API requests
   async ensureConnected() {
     if (!this.pgPool) {
       const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
       if (Pool && dbUrl) this.initPg(dbUrl);
-      return;
     }
 
-    if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
+    if (this.lastSyncTime === 0 && this.connectPromise) {
+      try {
+        await this.connectPromise;
+      } catch (e) {
+        console.error('Initial Supabase wait failed:', e.message);
+      }
+    } else if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
       this.syncFromSupabase().catch(() => {});
     }
   }
@@ -249,7 +250,9 @@ class Database {
       await this.save();
       return removed[0];
     }
-    return null;
+    // If not found in current array, ensure it is saved clean
+    await this.save();
+    return { id, deleted: true };
   }
 
   // Orders

@@ -16,14 +16,14 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
         return {
           shopBadge: s.shopBadge || 'Exclusive Fragrance Collection',
           shopTitle: s.shopTitle || 'Distinguished Scents For Every Occasion',
-          shopDescription: s.shopDescription || 'Available in precision travel decants (10ml, 30ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+          shopDescription: s.shopDescription || 'Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
         };
       }
     } catch (e) {}
     return {
       shopBadge: 'Exclusive Fragrance Collection',
       shopTitle: 'Distinguished Scents For Every Occasion',
-      shopDescription: 'Available in precision travel decants (10ml, 30ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+      shopDescription: 'Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
     };
   });
 
@@ -248,21 +248,20 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
           <p className="text-xs text-gray-400">Loading fragrance catalogue...</p>
         </div>
       ) : products.length === 0 ? (
-        <div className="glass-panel p-16 rounded-3xl text-center border border-[#d4af37]/20 my-8">
-          <p className="text-base text-gray-300 font-serif-luxury mb-2">No fragrances matched your filters</p>
-          <p className="text-xs text-gray-400 mb-6">Try clearing your search query or reset filter options.</p>
-          <button
-            onClick={() => {
-              setSearch('');
-              setSelectedGender('all');
-              setSelectedFamily('all');
-              setOnlyFeatured(false);
-              setOnlyDiscounted(false);
-            }}
-            className="px-6 py-2 rounded-full bg-[#d4af37] text-black font-semibold text-xs uppercase tracking-wider"
+        <div className="glass-panel p-16 rounded-3xl text-center border border-[#d4af37]/25 my-8 max-w-lg mx-auto">
+          <Sparkles className="w-8 h-8 text-[#d4af37] mx-auto mb-3 opacity-70 animate-pulse" />
+          <p className="text-lg text-white font-serif-luxury font-bold mb-2">New Fragrance Collection Launching Soon</p>
+          <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+            Our artisan decants and full presentation flacons are being catalogued. Please check back shortly or contact our master perfumers directly via WhatsApp.
+          </p>
+          <a
+            href="https://wa.me/94763151311?text=Hello%20SCENTORY.LK,%20I%20would%20like%20to%20inquire%20about%20your%20upcoming%20fragrances"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa771c] text-black font-bold text-xs uppercase tracking-wider hover:brightness-110 transition-all cursor-pointer shadow-lg"
           >
-            Reset All Filters
-          </button>
+            Inquire on WhatsApp
+          </a>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">

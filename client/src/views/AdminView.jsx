@@ -195,7 +195,12 @@ export default function AdminView({ onBackToShop }) {
         }
 
         if (Array.isArray(prodsData)) setProducts(prodsData);
-        if (settingsData) setSettings(settingsData);
+        if (settingsData) {
+          if (settingsData.heroVideoUrl && typeof settingsData.heroVideoUrl === 'string' && settingsData.heroVideoUrl.startsWith('data:video')) {
+            settingsData.heroVideoUrl = '/hero-uploaded-video.mp4';
+          }
+          setSettings(settingsData);
+        }
         if (reportsData) setReports(reportsData);
 
         const notifs = notifData?.notifications || [];
@@ -762,14 +767,20 @@ export default function AdminView({ onBackToShop }) {
   const handleDeleteProduct = async (productId) => {
     if (!window.confirm('Are you sure you want to delete this fragrance from the store?')) return;
     try {
+      // Optimistic UI update: instantly remove from list
+      setProducts(prev => prev.filter(p => p.id !== productId));
       const res = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to delete product.');
+      // Treat 200 OK or 404 (already deleted in cloud DB) as success
+      if (!res.ok && res.status !== 404) {
+        throw new Error('Failed to delete product.');
+      }
       loadAdminData();
     } catch (err) {
       alert(err.message);
+      loadAdminData();
     }
   };
 
@@ -914,18 +925,23 @@ export default function AdminView({ onBackToShop }) {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...settings };
+      if (payload.heroVideoUrl && typeof payload.heroVideoUrl === 'string' && payload.heroVideoUrl.startsWith('data:video')) {
+        payload.heroVideoUrl = '/hero-uploaded-video.mp4';
+        setSettings(prev => ({ ...prev, heroVideoUrl: '/hero-uploaded-video.mp4' }));
+      }
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update settings');
 
-      const newSettings = data.settings || settings;
+      const newSettings = data.settings || payload;
       try {
         localStorage.setItem('scentory_settings', JSON.stringify(newSettings));
       } catch (e) {}
@@ -2606,8 +2622,54 @@ export default function AdminView({ onBackToShop }) {
               </div>
 
               {/* Products Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map(product => {
+              {products.length === 0 ? (
+                <div className="glass-panel p-12 sm:p-16 rounded-3xl border border-[#d4af37]/30 text-center space-y-4 max-w-xl mx-auto my-8 shadow-2xl">
+                  <div className="w-16 h-16 rounded-2xl bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center mx-auto text-[#d4af37]">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-serif-luxury text-xl font-bold text-white">Your Fragrance Catalog is Fresh & Ready</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    All demo fragrances have been cleared. Click below to add your first authentic fragrance masterpiece with custom decants, pricing, and olfactory notes.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setEditingProduct(null);
+                      setProductForm({
+                        name: '',
+                        tagline: 'Extrait De Parfum',
+                        description: '',
+                        gender: 'Unisex',
+                        scentFamily: 'Oriental Woody',
+                        isFeatured: true,
+                        badge: 'Signature Edition',
+                        images: ['/brand-logo.png'],
+                        variants: [
+                          { id: 'v_10ml', size: '10ml Travel Atomizer', price: 3800, discountPrice: 3400, stock: 40, sku: 'DEC-10ML' },
+                          { id: 'v_20ml', size: '20ml Decant Flacon', price: 7200, discountPrice: 6500, stock: 25, sku: 'DEC-20ML' },
+                          { id: 'v_50ml', size: '50ml Signature Bottle', price: 16500, discountPrice: 14900, stock: 15, sku: 'DEC-50ML' },
+                          { id: 'v_100ml', size: '100ml Pure Extrait', price: 28500, discountPrice: 25900, stock: 10, sku: 'FLA-100ML' }
+                        ],
+                        notes: {
+                          top: ['Bergamot', 'Neroli'],
+                          heart: ['Amber Resin', 'Royal Oud'],
+                          base: ['Vanilla', 'Sandalwood']
+                        },
+                        _notesDraft: {
+                          top: 'Bergamot, Neroli',
+                          heart: 'Amber Resin, Royal Oud',
+                          base: 'Vanilla, Sandalwood'
+                        }
+                      });
+                      setIsProductModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#f3e5ab] to-[#aa771c] text-black font-bold text-xs uppercase tracking-widest shadow-lg hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add Your First Fragrance
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map(product => {
                   const lowestPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
                   return (
                     <div key={product.id} className="glass-panel rounded-2xl border border-[#d4af37]/20 p-5 space-y-4 flex flex-col justify-between">
@@ -2685,6 +2747,7 @@ export default function AdminView({ onBackToShop }) {
                   );
                 })}
               </div>
+              )}
 
               {/* PRODUCT ADD / EDIT MODAL */}
               {isProductModalOpen && (
