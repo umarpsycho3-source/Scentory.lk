@@ -50,6 +50,9 @@ function getInitialData() {
       heroVideoFit: 'contain',
       heroVideoAspect: 'auto',
       heroVideoHeight: 540,
+      shopBadge: 'Exclusive Fragrance Collection',
+      shopTitle: 'Distinguished Scents For Every Occasion',
+      shopDescription: 'Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).',
       announcement: '✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons'
     },
     users: [

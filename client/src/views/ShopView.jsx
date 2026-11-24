@@ -8,6 +8,26 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
   const { toggleFavourite, isFavourite } = useFavourites();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [shopSettings, setShopSettings] = useState({
+    shopBadge: 'Exclusive Fragrance Collection',
+    shopTitle: 'Distinguished Scents For Every Occasion',
+    shopDescription: 'Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).'
+  });
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data) {
+          setShopSettings(prev => ({
+            shopBadge: data.shopBadge || prev.shopBadge,
+            shopTitle: data.shopTitle || prev.shopTitle,
+            shopDescription: data.shopDescription || prev.shopDescription
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -69,13 +89,13 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
       {/* Page Title & Subtitle */}
       <div className="text-center max-w-3xl mx-auto mb-10">
         <span className="text-xs font-semibold tracking-[0.25em] text-[#d4af37] uppercase block mb-1">
-          Exclusive Fragrance Collection
+          {shopSettings.shopBadge}
         </span>
         <h1 className="font-serif-luxury text-3xl sm:text-5xl font-bold text-white tracking-wide">
-          Distinguished Scents For Every Occasion
+          {shopSettings.shopTitle}
         </h1>
-        <p className="text-xs sm:text-sm text-gray-300 mt-2 font-light">
-          Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).
+        <p className="text-xs sm:text-sm text-gray-300 mt-2 font-light leading-relaxed">
+          {shopSettings.shopDescription}
         </p>
       </div>
 

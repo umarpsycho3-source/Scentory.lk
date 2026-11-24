@@ -3698,6 +3698,64 @@ export default function AdminView({ onBackToShop }) {
                   </div>
                 </div>
 
+                {/* ALL FRAGRANCES COLLECTION (SHOP PAGE) HEADER SETTINGS */}
+                <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
+                  <div>
+                    <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
+                      <ShoppingBag className="w-4 h-4 text-[#d4af37]" />
+                      <span>🛍️ All Fragrances (Shop Page) Header & Description</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Customize the collection badge, main title, and decant sizing description displayed at the top of your shop/all fragrances catalog.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                        Collection Category Subtitle / Badge
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.shopBadge || "Exclusive Fragrance Collection"}
+                        onChange={(e) => setSettings({ ...settings, shopBadge: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        placeholder="e.g. Exclusive Fragrance Collection"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                        Main Shop Title / Headline
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.shopTitle || "Distinguished Scents For Every Occasion"}
+                        onChange={(e) => setSettings({ ...settings, shopTitle: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        placeholder="e.g. Distinguished Scents For Every Occasion"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                        <span>Decants & Currency Description</span>
+                        <span className="text-[10px] text-[#fcf6ba] font-normal">Editable Catalog Subtitle</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={settings.shopDescription || "Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR)."}
+                        onChange={(e) => setSettings({ ...settings, shopDescription: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] leading-relaxed"
+                        placeholder="e.g. Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR)."
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Displayed on the All Fragrances catalog right under the main title.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* HOMEPAGE HERO COMMERCIAL FILM & ADJUSTABLE SIZING SETTINGS */}
                 <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
                   <div className="flex items-center justify-between">
