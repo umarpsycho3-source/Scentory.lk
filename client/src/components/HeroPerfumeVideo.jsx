@@ -6,6 +6,18 @@ export default function HeroPerfumeVideo() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [videoSrc, setVideoSrc] = useState('/hero-perfume-video.mp4');
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.heroVideoUrl) {
+          setVideoSrc(data.heroVideoUrl);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -21,7 +33,7 @@ export default function HeroPerfumeVideo() {
           setIsPlaying(false);
         });
     }
-  }, []);
+  }, [videoSrc]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -63,7 +75,8 @@ export default function HeroPerfumeVideo() {
         {/* Video Element */}
         <video
           ref={videoRef}
-          src="/hero-perfume-video.mp4"
+          key={videoSrc}
+          src={videoSrc}
           playsInline
           autoPlay
           loop

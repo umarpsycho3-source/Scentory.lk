@@ -60,7 +60,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
               </h1>
 
               <p className="text-xs sm:text-base text-gray-300 font-light max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (5ml, 10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.
+                Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.
               </p>
 
               {/* CTAs */}
@@ -88,7 +88,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">Authentic Extrait</div>
                 </div>
                 <div>
-                  <div className="font-serif-luxury text-lg sm:text-xl font-bold gold-text-gradient">5ml — 100ml</div>
+                  <div className="font-serif-luxury text-lg sm:text-xl font-bold gold-text-gradient">10ml — 100ml</div>
                   <div className="text-[10px] text-gray-400 uppercase tracking-wider">Custom Decants</div>
                 </div>
                 <div>
@@ -290,7 +290,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
               Select ML Variant
             </h3>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Choose from 5ml pocket sprays, 10ml travel decants, 20ml luxury flacons, or 50ml/100ml bottles with dynamic instant prices.
+              Choose from 10ml travel decants, 20ml luxury flacons, or 50ml/100ml bottles with dynamic instant prices.
             </p>
           </div>
 

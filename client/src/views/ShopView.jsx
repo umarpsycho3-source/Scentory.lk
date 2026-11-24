@@ -75,7 +75,7 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
           Distinguished Scents For Every Occasion
         </h1>
         <p className="text-xs sm:text-sm text-gray-300 mt-2 font-light">
-          Available in precision pocket sprays (5ml, 10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).
+          Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).
         </p>
       </div>
 

@@ -42,6 +42,7 @@ function getInitialData() {
         swiftCode: 'CCEYLKX',
         instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
       },
+      heroVideoUrl: '/hero-perfume-video.mp4',
       announcement: '✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons'
     },
     users: [
@@ -70,7 +71,6 @@ function getInitialData() {
         description: 'Opulent Cambodian agarwood blended with amber, smoky leather, and Turkish damask rose. Sri Lanka signature luxury extrait de parfum.',
         images: ['/brand-logo.png'],
         variants: [
-          { id: 'v_5ml', size: '5ml Pocket Spray', price: 1950, discountPrice: 1750, stock: 50 },
           { id: 'v_10ml', size: '10ml Travel Atomizer', price: 3800, discountPrice: 3400, stock: 40 },
           { id: 'v_20ml', size: '20ml Decant Flacon', price: 7200, discountPrice: 6500, stock: 25 },
           { id: 'v_50ml', size: '50ml Signature Bottle', price: 16500, discountPrice: 14900, stock: 15 },

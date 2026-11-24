@@ -177,7 +177,7 @@ export default function RealisticPerfumeSpray() {
               <div className="w-8 h-px bg-gradient-to-r from-transparent via-[#d4af37] to-transparent my-2" />
 
               <span className="text-[8px] tracking-widest text-[#f3e5ab]/70 uppercase">
-                5ml • 10ml • 20ml • 50ml • 100ml
+                10ml • 20ml • 50ml • 100ml
               </span>
             </div>
 

@@ -3314,6 +3314,100 @@ export default function AdminView({ onBackToShop }) {
                   </div>
                 </div>
 
+                {/* HOMEPAGE HERO COMMERCIAL FILM SETTINGS */}
+                <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
+                        <span>🎬 Homepage Hero Video & Commercial Film</span>
+                      </h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Upload or replace the luxury commercial video playing in the hero section on the homepage.
+                      </p>
+                    </div>
+                    {settings.heroVideoUrl && settings.heroVideoUrl !== '/hero-perfume-video.mp4' && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, heroVideoUrl: '/hero-perfume-video.mp4' })}
+                        className="text-[11px] text-[#d4af37] hover:underline cursor-pointer"
+                      >
+                        Reset to Default Video
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                    {/* Live Video Preview Box */}
+                    <div className="rounded-2xl overflow-hidden border border-[#d4af37]/30 bg-black/80 aspect-[9/14] max-h-72 mx-auto md:mx-0 w-full relative group shadow-xl">
+                      <video
+                        key={settings.heroVideoUrl || '/hero-perfume-video.mp4'}
+                        src={settings.heroVideoUrl || '/hero-perfume-video.mp4'}
+                        playsInline
+                        muted
+                        autoPlay
+                        loop
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[9px] text-[#f3e5ab] font-mono border border-white/10">
+                        Live Preview
+                      </div>
+                    </div>
+
+                    {/* Upload Controls & URL Input */}
+                    <div className="md:col-span-2 space-y-4">
+                      {/* Direct Video URL */}
+                      <div>
+                        <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                          Direct Video URL (MP4 / WebM / Cloud Storage / CDN)
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.heroVideoUrl || ''}
+                          onChange={(e) => setSettings({ ...settings, heroVideoUrl: e.target.value })}
+                          placeholder="e.g. /hero-perfume-video.mp4 or https://your-cdn.com/perfume.mp4"
+                          className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] font-mono"
+                        />
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          You can paste any direct video URL from Cloudflare, Supabase, Cloudinary, or AWS S3.
+                        </p>
+                      </div>
+
+                      {/* Upload Video File Directly */}
+                      <div className="p-4 rounded-xl border border-dashed border-[#d4af37]/40 bg-[#161622] space-y-2 text-center">
+                        <label className="cursor-pointer block">
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 20 * 1024 * 1024) {
+                                alert('Video file size exceeds 20MB limit. For large 4K files, please paste a direct cloud video URL above.');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                setSettings({ ...settings, heroVideoUrl: reader.result });
+                                alert('New video loaded successfully! Click "Save All Settings" below to publish it live to the homepage.');
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                          <div className="flex flex-col items-center justify-center gap-1.5 text-xs text-gray-300 hover:text-white transition-colors">
+                            <span className="p-2.5 rounded-full bg-[#202030] text-[#d4af37] border border-[#d4af37]/30">
+                              📹 Click to Select & Upload Video File (MP4, WebM)
+                            </span>
+                            <span className="text-[10px] text-gray-500">
+                              Upload a fresh commercial film from your phone or computer
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="pt-4 flex justify-end">
                   <button
                     type="submit"
