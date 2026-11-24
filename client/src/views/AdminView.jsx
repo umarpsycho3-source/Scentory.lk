@@ -126,13 +126,14 @@ export default function AdminView({ onBackToShop }) {
     scentFamily: 'Oriental Woody',
     isFeatured: true,
     badge: 'Signature Edition',
-    notes: { top: ['Saffron', 'Bergamot'], heart: ['Amber Resin', 'Oud'], base: ['Vanilla', 'Sandalwood'] },
+    notes: { top: ['Bergamot', 'Neroli', 'Lemon'], heart: ['Amber Resin', 'Oud'], base: ['Vanilla', 'Sandalwood'] },
+    _notesDraft: { top: 'Bergamot, Neroli, Lemon', heart: 'Amber Resin, Oud', base: 'Vanilla, Sandalwood' },
     images: ['https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80'],
     variants: [
-      { id: 'v1', size: '5ml Pocket Spray', price: 1950, discountPrice: 1750, stock: 30, sku: 'DEC-5ML' },
-      { id: 'v2', size: '10ml Travel Spray', price: 3800, discountPrice: 3400, stock: 25, sku: 'DEC-10ML' },
-      { id: 'v3', size: '20ml Luxury Decant', price: 7200, discountPrice: 6500, stock: 15, sku: 'DEC-20ML' },
-      { id: 'v4', size: '50ml Signature Flacon', price: 15000, discountPrice: 13500, stock: 10, sku: 'FLA-50ML' }
+      { id: 'v1', size: '10ml Travel Atomizer', price: 3800, discountPrice: 3400, stock: 40, sku: 'DEC-10ML' },
+      { id: 'v2', size: '20ml Decant Flacon', price: 7200, discountPrice: 6500, stock: 25, sku: 'DEC-20ML' },
+      { id: 'v3', size: '50ml Signature Bottle', price: 16500, discountPrice: 14900, stock: 15, sku: 'DEC-50ML' },
+      { id: 'v4', size: '100ml Pure Extrait', price: 28500, discountPrice: 25900, stock: 10, sku: 'FLA-100ML' }
     ]
   };
   const [productForm, setProductForm] = useState(initialProductForm);
@@ -720,13 +721,16 @@ export default function AdminView({ onBackToShop }) {
       const url = isEdit ? `/api/products/${editingProduct.id}` : '/api/products';
       const method = isEdit ? 'PUT' : 'POST';
 
+      const payload = { ...productForm };
+      delete payload._notesDraft;
+
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(productForm)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -2517,7 +2521,19 @@ export default function AdminView({ onBackToShop }) {
                           <button
                             onClick={() => {
                               setEditingProduct(product);
-                              setProductForm(product);
+                              setProductForm({
+                                ...product,
+                                notes: {
+                                  top: product.notes?.top || [],
+                                  heart: product.notes?.heart || [],
+                                  base: product.notes?.base || []
+                                },
+                                _notesDraft: {
+                                  top: (product.notes?.top || []).join(', '),
+                                  heart: (product.notes?.heart || []).join(', '),
+                                  base: (product.notes?.base || []).join(', ')
+                                }
+                              });
                               setIsProductModalOpen(true);
                             }}
                             className="p-2 rounded-lg bg-[#181822] hover:bg-[#d4af37] hover:text-black text-gray-300 text-xs transition-colors cursor-pointer"
@@ -2630,6 +2646,107 @@ export default function AdminView({ onBackToShop }) {
                             placeholder="Detailed notes and fragrance experience..."
                             className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none"
                           />
+                        </div>
+
+                        {/* OLFACTORY PYRAMID STRUCTURE (TOP, HEART & BASE NOTES) */}
+                        <div className="sm:col-span-2 p-4 rounded-2xl bg-[#121218] border border-[#d4af37]/35 space-y-3.5 shadow-md">
+                          <div className="flex items-center justify-between pb-2 border-b border-[#d4af37]/15">
+                            <label className="text-xs font-serif-luxury font-bold uppercase tracking-wider text-[#f3e5ab] flex items-center gap-2">
+                              <span>Olfactory Pyramid Structure</span>
+                            </label>
+                            <span className="text-[10px] text-gray-400">
+                              Separate notes with commas (e.g. Bergamot, Neroli, Lemon)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            {/* Top Notes */}
+                            <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                              <label className="block text-[11px] uppercase tracking-wider text-[#d4af37] font-semibold">
+                                Top Notes (Head)
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm._notesDraft?.top !== undefined ? productForm._notesDraft.top : (productForm.notes?.top || []).join(', ')}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const arr = val.split(',').map(s => s.trim()).filter(Boolean);
+                                  setProductForm(prev => ({
+                                    ...prev,
+                                    notes: { ...(prev.notes || {}), top: arr },
+                                    _notesDraft: { ...(prev._notesDraft || {}), top: val }
+                                  }));
+                                }}
+                                placeholder="e.g. Bergamot, Neroli, Lemon"
+                                className="w-full px-3 py-2 rounded-xl bg-[#181824] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                              />
+                              <div className="flex flex-wrap gap-1 min-h-[24px]">
+                                {(productForm.notes?.top || []).map((n, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded bg-[#1e1e28] text-[#fcf6ba] text-[10px] border border-[#d4af37]/30">
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Heart Notes */}
+                            <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                              <label className="block text-[11px] uppercase tracking-wider text-[#d4af37] font-semibold">
+                                Heart Notes (Middle)
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm._notesDraft?.heart !== undefined ? productForm._notesDraft.heart : (productForm.notes?.heart || []).join(', ')}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const arr = val.split(',').map(s => s.trim()).filter(Boolean);
+                                  setProductForm(prev => ({
+                                    ...prev,
+                                    notes: { ...(prev.notes || {}), heart: arr },
+                                    _notesDraft: { ...(prev._notesDraft || {}), heart: val }
+                                  }));
+                                }}
+                                placeholder="e.g. Amber Resin, Royal Oud"
+                                className="w-full px-3 py-2 rounded-xl bg-[#181824] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                              />
+                              <div className="flex flex-wrap gap-1 min-h-[24px]">
+                                {(productForm.notes?.heart || []).map((n, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded bg-[#1e1e28] text-[#fcf6ba] text-[10px] border border-[#d4af37]/30">
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Base Notes */}
+                            <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                              <label className="block text-[11px] uppercase tracking-wider text-[#d4af37] font-semibold">
+                                Base Notes (Drydown)
+                              </label>
+                              <input
+                                type="text"
+                                value={productForm._notesDraft?.base !== undefined ? productForm._notesDraft.base : (productForm.notes?.base || []).join(', ')}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const arr = val.split(',').map(s => s.trim()).filter(Boolean);
+                                  setProductForm(prev => ({
+                                    ...prev,
+                                    notes: { ...(prev.notes || {}), base: arr },
+                                    _notesDraft: { ...(prev._notesDraft || {}), base: val }
+                                  }));
+                                }}
+                                placeholder="e.g. Vanilla, Sandalwood, Musk"
+                                className="w-full px-3 py-2 rounded-xl bg-[#181824] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                              />
+                              <div className="flex flex-wrap gap-1 min-h-[24px]">
+                                {(productForm.notes?.base || []).map((n, i) => (
+                                  <span key={i} className="px-2 py-0.5 rounded bg-[#1e1e28] text-[#fcf6ba] text-[10px] border border-[#d4af37]/30">
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         <div>
