@@ -60,13 +60,14 @@ router.post('/', authenticateToken, async (req, res) => {
       customerDetails,
       items,
       bankSlipUrl,
-      notes
+      notes,
+      fulfillmentType
     } = req.body;
 
     // Validate customer details
     if (!customerDetails || !customerDetails.name || !customerDetails.phone || !customerDetails.address) {
       return res.status(400).json({
-        message: 'Please complete all customer details: Name, WhatsApp number, and Delivery address.'
+        message: 'Please complete all customer details: Name, WhatsApp number, and Delivery / Pick Up address.'
       });
     }
 
@@ -101,7 +102,8 @@ router.post('/', authenticateToken, async (req, res) => {
       };
     });
 
-    const deliveryFee = settings.deliveryFee || 500;
+    const isPickup = fulfillmentType === 'pickup';
+    const deliveryFee = isPickup ? 0 : (settings.deliveryFee !== undefined ? Number(settings.deliveryFee) : 500);
     const finalTotal = subtotal + deliveryFee;
 
     const orderId = 'SCNT-' + Math.floor(1000 + Math.random() * 9000);
@@ -119,6 +121,7 @@ router.post('/', authenticateToken, async (req, res) => {
         notes: (notes || customerDetails.notes || '').trim()
       },
       items: validatedItems,
+      fulfillmentType: isPickup ? 'pickup' : 'delivery',
       subtotal,
       deliveryFee,
       finalTotal,

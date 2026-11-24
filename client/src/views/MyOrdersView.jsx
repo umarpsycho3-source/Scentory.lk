@@ -170,10 +170,17 @@ export default function MyOrdersView({ onBackToShop, openAuthModal }) {
                 {/* Delivery & Payment Slip Verification Info */}
                 <div className="pt-4 border-t border-[#d4af37]/15 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-black/20 p-4 rounded-xl">
                   <div>
-                    <span className="text-[10px] text-gray-400 block uppercase font-semibold mb-1">
-                      Delivery Address
-                    </span>
-                    <p className="text-gray-200">{order.customerDetails.address}, {order.customerDetails.city}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] text-gray-400 uppercase font-semibold">
+                        {order.fulfillmentType === 'pickup' ? 'Fulfillment: Store Pick Up' : 'Delivery Address'}
+                      </span>
+                      {order.fulfillmentType === 'pickup' && (
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">
+                          Free Pick Up (Ulapane)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-200">{order.customerDetails.address}{order.customerDetails.city ? ', ' + order.customerDetails.city : ''}</p>
                     <p className="text-gray-400 text-[11px] mt-0.5">WhatsApp: {order.customerDetails.phone}</p>
                   </div>
 

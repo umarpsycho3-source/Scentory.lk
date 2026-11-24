@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Upload, CheckCircle2, AlertCircle, Building2, Phone, MapPin, Mail, User, ArrowLeft, ExternalLink, Clock, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Upload, CheckCircle2, AlertCircle, Building2, Phone, MapPin, Mail, User, ArrowLeft, ExternalLink, Clock, AlertTriangle, Truck, Store } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal }) {
   const { user } = useAuth();
-  const { cart, subtotal, deliveryFee, finalTotal, clearCart } = useCart();
+  const { cart, subtotal, deliveryFee, clearCart } = useCart();
+
+  // Fulfillment Method: 'delivery' (Rs. 500) vs 'pickup' (FREE - Rs. 0)
+  const [fulfillmentType, setFulfillmentType] = useState('delivery');
+
+  // Dynamic calculations based on fulfillment method
+  const activeDeliveryFee = fulfillmentType === 'pickup' ? 0 : (deliveryFee || 500);
+  const checkoutTotal = subtotal + activeDeliveryFee;
 
   // Form fields
   const [name, setName] = useState(user?.name || '');
@@ -155,6 +162,9 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
           notes
         },
         items: cart,
+        fulfillmentType, // 'delivery' | 'pickup'
+        deliveryFee: activeDeliveryFee,
+        finalTotal: checkoutTotal,
         bankSlipUrl,
         notes
       };
@@ -192,18 +202,22 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
         if (storeWa.startsWith('0')) storeWa = '94' + storeWa.substring(1);
         if (!storeWa.startsWith('94')) storeWa = '94' + storeWa;
 
-        const itemsList = (data.order.items || []).map(i => `${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1}`).join(', ');
+        const isSelfPickup = (data.order.fulfillmentType || fulfillmentType) === 'pickup';
+        const fulfillmentMethodText = isSelfPickup ? '🏬 Store / House Pick Up (Ulapane - FREE: Rs. 0)' : '🚚 Islandwide Courier Delivery (Rs. 500)';
+        const feeText = isSelfPickup ? 'FREE (Rs. 0 - Self Pick Up)' : 'Rs. 500';
+
         const waText = encodeURIComponent(
           `*NEW ORDER NOTIFICATION - SCENTORY.LK*\n\n` +
           `*Order ID:* #${data.order.id}\n` +
           `*Customer Name:* ${data.order.customerDetails?.name}\n` +
           `*WhatsApp / Phone:* ${data.order.customerDetails?.phone}\n` +
-          `*Delivery Address:* ${data.order.customerDetails?.address}${data.order.customerDetails?.city ? ', ' + data.order.customerDetails?.city : ''}\n` +
+          `*Fulfillment Method:* ${fulfillmentMethodText}\n` +
+          `*Customer Location / Address:* ${data.order.customerDetails?.address}${data.order.customerDetails?.city ? ', ' + data.order.customerDetails?.city : ''}\n` +
           `*Purchased Fragrances:*\n${(data.order.items || []).map(i => `  • ${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1} - Rs. ${((i.price || 0) * (i.quantity || 1)).toLocaleString()}`).join('\n')}\n\n` +
-          `*Delivery Fee:* Rs. 500\n` +
+          `*Delivery Fee:* ${feeText}\n` +
           `*Final Total:* Rs. ${data.order.finalTotal?.toLocaleString()}\n` +
           `*Payment Status:* Bank Transfer Receipt Uploaded\n\n` +
-          `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. Please verify and confirm dispatch. Thank you!_`
+          `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. ${isSelfPickup ? 'I will pick up my order in Ulapane.' : 'Please verify and confirm dispatch.'} Thank you!_`
         );
         const autoWhatsAppUrl = `https://wa.me/${storeWa}?text=${waText}`;
 
@@ -226,18 +240,22 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
     if (storeWa.startsWith('0')) storeWa = '94' + storeWa.substring(1);
     if (!storeWa.startsWith('94')) storeWa = '94' + storeWa;
 
-    const itemsList = (placedOrder.items || []).map(i => `${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1}`).join(', ');
+    const isOrderPickup = (placedOrder.fulfillmentType || fulfillmentType) === 'pickup';
+    const orderFulfillmentTitle = isOrderPickup ? '🏬 Store / House Pick Up (Ulapane - FREE)' : '🚚 Islandwide Courier Delivery (Rs. 500)';
+    const orderDeliveryFeeText = isOrderPickup ? 'FREE (Rs. 0)' : 'Rs. 500';
+
     const whatsappMsg = encodeURIComponent(
       `*NEW ORDER NOTIFICATION - SCENTORY.LK*\n\n` +
       `*Order ID:* #${placedOrder.id}\n` +
       `*Customer Name:* ${placedOrder.customerDetails?.name}\n` +
       `*WhatsApp / Phone:* ${placedOrder.customerDetails?.phone}\n` +
-      `*Delivery Address:* ${placedOrder.customerDetails?.address}${placedOrder.customerDetails?.city ? ', ' + placedOrder.customerDetails?.city : ''}\n` +
+      `*Fulfillment Method:* ${orderFulfillmentTitle}\n` +
+      `*Customer Location / Address:* ${placedOrder.customerDetails?.address}${placedOrder.customerDetails?.city ? ', ' + placedOrder.customerDetails?.city : ''}\n` +
       `*Purchased Fragrances:*\n${(placedOrder.items || []).map(i => `  • ${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1} - Rs. ${((i.price || 0) * (i.quantity || 1)).toLocaleString()}`).join('\n')}\n\n` +
-      `*Delivery Fee:* Rs. 500\n` +
+      `*Delivery Fee:* ${orderDeliveryFeeText}\n` +
       `*Final Total:* Rs. ${placedOrder.finalTotal?.toLocaleString()}\n` +
       `*Payment Status:* Bank Transfer Receipt Uploaded\n\n` +
-      `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. Please verify and confirm dispatch. Thank you!_`
+      `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. ${isOrderPickup ? 'I will pick up my order in Ulapane.' : 'Please verify and confirm dispatch.'} Thank you!_`
     );
     const whatsappLink = `https://wa.me/${storeWa}?text=${whatsappMsg}`;
 
@@ -279,18 +297,30 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
           </div>
 
           {/* Order Summary Snapshot */}
-          <div className="bg-[#0b0b0f] p-4 rounded-2xl border border-white/5 text-left text-xs space-y-2 mb-8 max-w-xl mx-auto">
+          <div className="bg-[#0b0b0f] p-4 rounded-2xl border border-white/5 text-left text-xs space-y-2.5 mb-8 max-w-xl mx-auto">
             <div className="flex justify-between text-gray-400">
               <span>Items Ordered:</span>
               <span className="text-white font-medium">{placedOrder.items.length} Fragrances</span>
             </div>
-            <div className="flex justify-between text-gray-400">
-              <span>Delivery Address:</span>
-              <span className="text-white truncate max-w-[280px]">{placedOrder.customerDetails.address}, {placedOrder.customerDetails.city}</span>
+            <div className="flex justify-between items-center text-gray-400">
+              <span>Fulfillment Option:</span>
+              <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${isOrderPickup ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40'}`}>
+                {isOrderPickup ? '🏬 Store Pick Up (Ulapane)' : '🚚 Islandwide Courier Delivery'}
+              </span>
             </div>
             <div className="flex justify-between text-gray-400">
-              <span>Total Paid via Bank Transfer:</span>
-              <span className="gold-text-gradient font-bold text-sm">Rs. {placedOrder.finalTotal.toLocaleString()}</span>
+              <span>Customer Location / Address:</span>
+              <span className="text-white truncate max-w-[280px]">{placedOrder.customerDetails.address}{placedOrder.customerDetails.city ? ', ' + placedOrder.customerDetails.city : ''}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Fulfillment Fee:</span>
+              <span className={isOrderPickup ? "text-emerald-400 font-bold" : "text-white"}>
+                {orderDeliveryFeeText}
+              </span>
+            </div>
+            <div className="flex justify-between text-gray-400 pt-2 border-t border-white/10">
+              <span className="font-semibold text-white">Total Paid via Bank Transfer:</span>
+              <span className="gold-text-gradient font-bold text-base">Rs. {placedOrder.finalTotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-gray-400 pt-2 border-t border-white/10">
               <span>Payment Verification Status:</span>
@@ -396,17 +426,120 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
           {/* Left Column: Customer Details & Bank Transfer Payment Section */}
           <div className="lg:col-span-7 space-y-6">
             {/* Step 1: Customer Details */}
-            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-[#d4af37]/25 space-y-4">
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-[#d4af37]/25 space-y-6">
               <div className="flex items-center gap-3 pb-3 border-b border-[#d4af37]/15">
                 <div className="w-7 h-7 rounded-full bg-[#d4af37] text-black font-bold text-xs flex items-center justify-center">
                   1
                 </div>
                 <h3 className="font-serif-luxury text-base font-bold text-white uppercase tracking-wider">
-                  Customer & Delivery Details
+                  Fulfillment & Customer Details
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* FULFILLMENT METHOD SELECTOR (ISLANDWIDE DELIVERY VS LOCAL PICK UP) */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#d4af37]">
+                    Choose Order Fulfillment Method *
+                  </label>
+                  <span className="text-[10px] text-gray-400">Select pickup to avoid delivery fees</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Option 1: Islandwide Courier Delivery */}
+                  <div
+                    onClick={() => setFulfillmentType('delivery')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
+                      fulfillmentType === 'delivery'
+                        ? 'bg-gradient-to-br from-[#1c180f] to-[#2b2210] border-[#d4af37] shadow-[0_0_20px_rgba(212,175,55,0.22)] ring-1 ring-[#d4af37]'
+                        : 'bg-[#121218] border-white/10 hover:border-white/20 opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          fulfillmentType === 'delivery'
+                            ? 'bg-[#d4af37] text-black shadow-md'
+                            : 'bg-white/5 text-gray-400'
+                        }`}>
+                          <Truck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                            Islandwide Delivery
+                          </h4>
+                          <span className="text-[10px] text-gray-400 block mt-0.5">
+                            Doorstep courier delivery across Sri Lanka
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        fulfillmentType === 'delivery'
+                          ? 'border-[#d4af37] bg-[#d4af37]'
+                          : 'border-white/30'
+                      }`}>
+                        {fulfillmentType === 'delivery' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
+                      <span className="text-gray-400 text-[11px]">Courier Delivery Fee:</span>
+                      <span className="text-[#f3e5ab] font-bold">Rs. 500</span>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Store / House Pick Up (Local to Ulapane) */}
+                  <div
+                    onClick={() => setFulfillmentType('pickup')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
+                      fulfillmentType === 'pickup'
+                        ? 'bg-gradient-to-br from-[#0e1d16] to-[#142e22] border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500'
+                        : 'bg-[#121218] border-white/10 hover:border-white/20 opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          fulfillmentType === 'pickup'
+                            ? 'bg-emerald-400 text-black shadow-md'
+                            : 'bg-white/5 text-gray-400'
+                        }`}>
+                          <Store className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                              Store / House Pick Up
+                            </h4>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Free
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 block mt-0.5">
+                            Collect near our house in Ulapane (Gampola)
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        fulfillmentType === 'pickup'
+                          ? 'border-emerald-400 bg-emerald-400'
+                          : 'border-white/30'
+                      }`}>
+                        {fulfillmentType === 'pickup' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2.5 border-t border-white/10 text-xs">
+                      <span className="text-gray-400 text-[11px]">Local Pick Up Charge:</span>
+                      <span className="text-emerald-400 font-bold">FREE (Rs. 0)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/10">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">
                     Customer Full Name *
@@ -460,7 +593,9 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">
-                    Delivery Street Address in Sri Lanka *
+                    {fulfillmentType === 'pickup'
+                      ? 'Your Residential / Contact Address (Ulapane / Surrounding Area) *'
+                      : 'Doorstep Courier Delivery Address in Sri Lanka *'}
                   </label>
                   <div className="relative">
                     <MapPin className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
@@ -469,22 +604,32 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
                       required
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder="House No, Street Name, Apartment / Area"
+                      placeholder={
+                        fulfillmentType === 'pickup'
+                          ? "e.g. House No, Village / Road name near Ulapane, Gampola"
+                          : "House No, Street Name, Apartment / Area"
+                      }
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#121218] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none"
                     />
                   </div>
+                  {fulfillmentType === 'pickup' && (
+                    <p className="text-[11px] text-emerald-400/95 mt-1.5 flex items-center gap-1.5">
+                      <span>✓</span>
+                      <span>Pick up directly in Ulapane for FREE. Please enter your location so we can identify you when you arrive.</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">
-                    City / District *
+                    City / Town *
                   </label>
                   <input
                     type="text"
                     required
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Colombo, Kandy, Galle"
+                    placeholder={fulfillmentType === 'pickup' ? "e.g. Ulapane, Gampola, Nawalapitiya" : "e.g. Colombo, Kandy, Galle"}
                     className="w-full px-4 py-2.5 rounded-xl bg-[#121218] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none"
                   />
                 </div>
@@ -504,13 +649,17 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-1">
-                    Order / Delivery Notes (Optional)
+                    {fulfillmentType === 'pickup' ? 'Pick Up Notes / Expected Date & Time (Optional)' : 'Order / Delivery Notes (Optional)'}
                   </label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Special instructions for courier..."
+                    placeholder={
+                      fulfillmentType === 'pickup'
+                        ? "e.g. I will come to pick up on Friday afternoon after 3 PM"
+                        : "Special instructions for courier..."
+                    }
                     className="w-full px-4 py-2 rounded-xl bg-[#121218] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none resize-none"
                   />
                 </div>
@@ -569,6 +718,22 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
                 <p className="text-[11px] text-gray-300 leading-relaxed pt-1">
                   💡 {bankSettings.instructions}
                 </p>
+
+                {/* Live Payable Amount Badge */}
+                <div className="p-3.5 rounded-xl bg-black/60 border border-[#d4af37]/30 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase">Payable Amount ({fulfillmentType === 'pickup' ? 'Free Pick Up' : 'Courier Included'})</span>
+                    <strong className={fulfillmentType === 'pickup' ? "text-emerald-400 font-semibold text-xs" : "text-gray-300 font-semibold text-xs"}>
+                      {fulfillmentType === 'pickup' ? '✓ Free Pick Up (Delivery fee Rs. 0)' : 'Includes Rs. 500 islandwide courier'}
+                    </strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-gray-400 block text-[10px] uppercase">Amount to Transfer</span>
+                    <span className="text-base sm:text-lg font-serif-luxury font-bold gold-text-gradient">
+                      Rs. {checkoutTotal.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* MANDATORY PAYMENT SLIP UPLOAD */}
@@ -683,20 +848,27 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
               </div>
 
               {/* Calculations */}
-              <div className="pt-4 border-t border-white/10 space-y-2 text-xs">
+              <div className="pt-4 border-t border-white/10 space-y-2.5 text-xs">
                 <div className="flex justify-between text-gray-400">
                   <span>Subtotal</span>
-                  <span className="text-white">Rs. {subtotal.toLocaleString()}</span>
+                  <span className="text-white font-medium">Rs. {subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>Islandwide Delivery</span>
-                  <span className={deliveryFee === 0 ? "text-emerald-400 font-semibold" : "text-white"}>
-                    {deliveryFee === 0 ? "FREE" : `Rs. ${deliveryFee.toLocaleString()}`}
+                <div className="flex justify-between items-center text-gray-400">
+                  <span className="flex items-center gap-1.5">
+                    {fulfillmentType === 'pickup' ? (
+                      <Store className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Truck className="w-3.5 h-3.5 text-[#d4af37]" />
+                    )}
+                    <span>{fulfillmentType === 'pickup' ? 'Store / House Pick Up' : 'Islandwide Delivery'}</span>
+                  </span>
+                  <span className={activeDeliveryFee === 0 ? "text-emerald-400 font-bold" : "text-white font-semibold"}>
+                    {activeDeliveryFee === 0 ? "FREE (Rs. 0)" : `Rs. ${activeDeliveryFee.toLocaleString()}`}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-white/10 flex justify-between text-lg font-serif-luxury font-bold">
-                  <span className="text-white">Final Total</span>
-                  <span className="gold-text-gradient">Rs. {finalTotal.toLocaleString()}</span>
+                <div className="pt-3 border-t border-white/10 flex justify-between items-baseline text-lg font-serif-luxury font-bold">
+                  <span className="text-white text-sm uppercase tracking-wider">Final Total</span>
+                  <span className="gold-text-gradient text-xl">Rs. {checkoutTotal.toLocaleString()}</span>
                 </div>
               </div>
 

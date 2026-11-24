@@ -501,8 +501,9 @@ export default function AdminView({ onBackToShop }) {
     `).join('');
 
     const subtotal = (order.items || []).reduce((acc, i) => acc + ((i.price || 0) * (i.quantity || 1)), 0);
-    const deliveryFee = order.deliveryFee !== undefined ? order.deliveryFee : 500;
-    const finalTotal = order.totalAmount || (subtotal + deliveryFee);
+    const isPickup = order.fulfillmentType === 'pickup' || order.deliveryFee === 0;
+    const deliveryFee = isPickup ? 0 : (order.deliveryFee !== undefined ? Number(order.deliveryFee) : 500);
+    const finalTotal = order.finalTotal || order.totalAmount || (subtotal + deliveryFee);
     const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString();
 
     const invoiceContent = `
@@ -640,13 +641,16 @@ export default function AdminView({ onBackToShop }) {
               <tr>
                 <td style="width: 50%; vertical-align: top; padding-right: 15px;">
                   <div style="font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-                    CUSTOMER & DELIVERY DETAILS
+                    CUSTOMER & FULFILLMENT DETAILS
                   </div>
                   <div style="font-size: 14px; font-weight: 700; color: #111827;">${order.customerDetails?.name || 'Customer'}</div>
                   <div style="color: #4b5563; margin-top: 2px;">WhatsApp / Phone: <strong>${order.customerDetails?.phone || 'N/A'}</strong></div>
                   <div style="color: #4b5563;">Email: ${order.customerDetails?.email || order.userEmail || 'N/A'}</div>
                   <div style="color: #4b5563; margin-top: 4px;">
-                    Shipping Address: <strong>${order.customerDetails?.address || 'N/A'}${order.customerDetails?.city ? ', ' + order.customerDetails?.city : ''}</strong>
+                    ${isPickup ? 'Customer Location:' : 'Shipping Address:'} <strong>${order.customerDetails?.address || 'N/A'}${order.customerDetails?.city ? ', ' + order.customerDetails?.city : ''}</strong>
+                  </div>
+                  <div style="margin-top: 4px;">
+                    Fulfillment Method: <strong style="color: ${isPickup ? '#059669' : '#111827'};">${isPickup ? '🏬 Store / House Pick Up (Ulapane - Free)' : '🚚 Islandwide Courier Delivery'}</strong>
                   </div>
                 </td>
                 <td style="width: 50%; vertical-align: top; border-left: 1px solid #e5e7eb; padding-left: 15px;">
@@ -660,7 +664,7 @@ export default function AdminView({ onBackToShop }) {
                     <span class="badge-verified">${order.paymentStatus === 'verified' ? '✓ Bank Slip Verified' : (order.paymentStatus === 'rejected' ? '✗ Slip Rejected' : 'Awaiting Slip Verification')}</span>
                   </div>
                   <div style="color: #4b5563; margin-top: 4px;">
-                    Fulfillment: <strong style="text-transform: uppercase;">${order.orderStatus || 'Processing'}</strong>
+                    Order Status: <strong style="text-transform: uppercase;">${order.orderStatus || 'Processing'}</strong>
                   </div>
                 </td>
               </tr>
@@ -689,8 +693,10 @@ export default function AdminView({ onBackToShop }) {
               <td style="text-align: right; font-weight: 600;">Rs. ${subtotal.toLocaleString()}</td>
             </tr>
             <tr>
-              <td style="color: #4b5563;">Islandwide Courier Delivery:</td>
-              <td style="text-align: right; font-weight: 600;">Rs. ${deliveryFee.toLocaleString()}</td>
+              <td style="color: #4b5563;">Fulfillment (${isPickup ? 'Store Pick Up at Ulapane' : 'Islandwide Courier Delivery'}):</td>
+              <td style="text-align: right; font-weight: 600; color: ${isPickup ? '#059669' : '#111827'};">
+                ${isPickup ? 'FREE (Rs. 0)' : 'Rs. ' + deliveryFee.toLocaleString()}
+              </td>
             </tr>
             <tr class="total-row">
               <td style="padding-top: 8px;">Grand Total (LKR):</td>
@@ -1683,6 +1689,15 @@ export default function AdminView({ onBackToShop }) {
                                   </a>
                                 )}
                                 <span className="text-[10px] text-gray-500 block truncate max-w-[140px]">{customerCity}</span>
+                                {order.fulfillmentType === 'pickup' || order.deliveryFee === 0 ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-1.5 py-0.5 rounded-full mt-1">
+                                    🏬 Pick Up (Rs. 0)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-medium text-gray-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-full mt-1">
+                                    🚚 Delivery (Rs. 500)
+                                  </span>
+                                )}
                               </td>
                               <td className="p-4">
                                 <div className="space-y-0.5">
@@ -1808,8 +1823,22 @@ export default function AdminView({ onBackToShop }) {
                       </div>
 
                       <div>
-                        <span className="text-gray-400 uppercase font-semibold block text-[10px] mb-1">Delivery Destination</span>
-                        <p className="text-white">{selectedOrder.customerDetails?.address || 'N/A'}</p>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-gray-400 uppercase font-semibold text-[10px]">
+                            {selectedOrder.fulfillmentType === 'pickup' ? 'Fulfillment: Store Pick Up' : 'Fulfillment: Courier Delivery'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            selectedOrder.fulfillmentType === 'pickup'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                              : 'bg-amber-950 text-amber-300 border border-amber-500/40'
+                          }`}>
+                            {selectedOrder.fulfillmentType === 'pickup' ? '🏬 Free Pick Up (Ulapane)' : '🚚 Delivery (Rs. 500)'}
+                          </span>
+                        </div>
+                        <span className="text-gray-400 uppercase font-semibold block text-[10px] mb-0.5">
+                          {selectedOrder.fulfillmentType === 'pickup' ? 'Customer Location' : 'Delivery Destination'}
+                        </span>
+                        <p className="text-white font-medium">{selectedOrder.customerDetails?.address || 'N/A'}</p>
                         <p className="text-gray-300">{selectedOrder.customerDetails?.city || ''} {selectedOrder.customerDetails?.postalCode || ''}</p>
                         {selectedOrder.customerDetails?.notes && (
                           <p className="text-amber-300 mt-1 italic">Note: "{selectedOrder.customerDetails.notes}"</p>
@@ -1985,11 +2014,15 @@ export default function AdminView({ onBackToShop }) {
                             const name = selectedOrder.customerDetails?.name || selectedOrder.customerName || 'Customer';
                             const orderId = selectedOrder.id;
                             const total = (selectedOrder.totalAmount || selectedOrder.finalTotal || 0).toLocaleString();
+                            const isPickup = selectedOrder.fulfillmentType === 'pickup' || selectedOrder.deliveryFee === 0;
+                            const prepNote = isPickup
+                              ? 'Your signature fragrances are now being hand-decanted and prepared for local pick up at our Ulapane location.'
+                              : 'Your signature fragrances are now being hand-decanted and prepared for courier dispatch.';
                             const msg = encodeURIComponent(
                               `*PAYMENT VERIFIED - SCENTORY.LK*\n\n` +
                               `Dear ${name},\n\n` +
                               `Your bank transfer payment for Order *#${orderId}* (Rs. ${total}) has been verified by our accounts team! ✨\n\n` +
-                              `Your signature fragrances are now being hand-decanted and prepared for courier dispatch.\n\n` +
+                              `${prepNote}\n\n` +
                               `Thank you for choosing SCENTORY.LK!`
                             );
                             window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
@@ -2000,7 +2033,7 @@ export default function AdminView({ onBackToShop }) {
                           <span>WhatsApp: Payment Verified</span>
                         </button>
 
-                        {/* Notify Order Dispatched */}
+                        {/* Notify Order Dispatched OR Ready for Pick Up */}
                         <button
                           type="button"
                           onClick={() => {
@@ -2009,20 +2042,34 @@ export default function AdminView({ onBackToShop }) {
                             const name = selectedOrder.customerDetails?.name || selectedOrder.customerName || 'Customer';
                             const orderId = selectedOrder.id;
                             const address = selectedOrder.customerDetails?.address || 'your destination address';
-                            const msg = encodeURIComponent(
-                              `*ORDER DISPATCHED - SCENTORY.LK*\n\n` +
-                              `Dear ${name},\n\n` +
-                              `Great news! Your fragrance order *#${orderId}* has been dispatched via verified courier for island-wide delivery to:\n` +
-                              `📍 ${address}\n\n` +
-                              `Please ensure someone is available at the delivery location. Feel free to reply here if you have any questions!\n\n` +
-                              `SCENTORY.LK • Luxury Fragrances`
-                            );
+                            const isPickup = selectedOrder.fulfillmentType === 'pickup' || selectedOrder.deliveryFee === 0;
+
+                            const msg = isPickup
+                              ? encodeURIComponent(
+                                  `*ORDER READY FOR PICK UP - SCENTORY.LK*\n\n` +
+                                  `Dear ${name},\n\n` +
+                                  `Great news! Your fragrance order *#${orderId}* is now freshly decanted and ready for pick up at our Ulapane location! ✨\n\n` +
+                                  `Customer Location on file: ${address}\n\n` +
+                                  `Please reply to this chat when you are on your way or when you arrive to collect your order. Thank you for choosing SCENTORY.LK!`
+                                )
+                              : encodeURIComponent(
+                                  `*ORDER DISPATCHED - SCENTORY.LK*\n\n` +
+                                  `Dear ${name},\n\n` +
+                                  `Great news! Your fragrance order *#${orderId}* has been dispatched via verified courier for island-wide delivery to:\n` +
+                                  `📍 ${address}\n\n` +
+                                  `Please ensure someone is available at the delivery location. Feel free to reply here if you have any questions!\n\n` +
+                                  `SCENTORY.LK • Luxury Fragrances`
+                                );
                             window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
                           }}
                           className="py-2.5 px-3 rounded-xl bg-blue-950/80 border border-blue-500/40 hover:bg-blue-600 hover:text-white text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>WhatsApp: Order Dispatched</span>
+                          <span>
+                            {selectedOrder.fulfillmentType === 'pickup' || selectedOrder.deliveryFee === 0
+                              ? 'WhatsApp: Ready For Pick Up'
+                              : 'WhatsApp: Order Dispatched'}
+                          </span>
                         </button>
                       </div>
                     </div>
