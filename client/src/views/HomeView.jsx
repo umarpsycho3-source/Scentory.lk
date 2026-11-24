@@ -14,14 +14,21 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
   const [isAddReviewOpen, setIsAddReviewOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [heroSettings, setHeroSettings] = useState({
+    heroBadge: "WE'RE LIVE • SCENTORY.LK",
+    heroTitle: "A New Destination For Your",
+    heroSubtitle: "Signature Scent.",
+    heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."
+  });
 
   const loadData = () => {
     Promise.all([
-      fetch('/api/products/featured').then(res => res.json()),
-      fetch('/api/products/trending').then(res => res.json()),
-      fetch('/api/reviews').then(res => res.json())
+      fetch('/api/products/featured').then(res => res.json()).catch(() => []),
+      fetch('/api/products/trending').then(res => res.json()).catch(() => []),
+      fetch('/api/reviews').then(res => res.json()).catch(() => ({ reviews: [] })),
+      fetch('/api/settings').then(res => res.json()).catch(() => null)
     ])
-      .then(([featured, trending, reviewsData]) => {
+      .then(([featured, trending, reviewsData, settingsData]) => {
         if (Array.isArray(featured)) setFeaturedProducts(featured);
         if (Array.isArray(trending)) setTrendingProducts(trending);
         if (reviewsData && reviewsData.reviews) {
@@ -29,6 +36,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           setHomeReviews(reviewsData.reviews.slice(0, 5));
           setAverageRating(reviewsData.averageRating || 5.0);
           setTotalReviews(reviewsData.total || 0);
+        }
+        if (settingsData) {
+          setHeroSettings(prev => ({
+            heroBadge: settingsData.heroBadge || prev.heroBadge,
+            heroTitle: settingsData.heroTitle || prev.heroTitle,
+            heroSubtitle: settingsData.heroSubtitle || prev.heroSubtitle,
+            heroDescription: settingsData.heroDescription || prev.heroDescription
+          }));
         }
       })
       .catch(err => console.error(err))
@@ -51,16 +66,16 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
             <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left z-10 w-full max-w-full">
               <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border border-[#d4af37]/40 bg-[#141208]/90 text-[#f3e5ab] text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.25em] shadow-[0_0_20px_rgba(212,175,55,0.2)]">
                 <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-pulse flex-shrink-0" />
-                <span className="truncate">WE'RE LIVE • SCENTORY.LK</span>
+                <span className="truncate">{heroSettings.heroBadge}</span>
               </div>
 
               <h1 className="font-serif-luxury text-2xl xs:text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight sm:leading-[1.1] tracking-wide break-words">
-                A New Destination For Your{' '}
-                <span className="gold-text-gradient block mt-1">Signature Scent.</span>
+                {heroSettings.heroTitle}{' '}
+                <span className="gold-text-gradient block mt-1">{heroSettings.heroSubtitle}</span>
               </h1>
 
-              <p className="text-xs sm:text-base text-gray-300 font-light max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.
+              <p className="text-xs sm:text-base text-gray-300 font-light max-w-xl mx-auto lg:mx-0 leading-relaxed whitespace-pre-line">
+                {heroSettings.heroDescription}
               </p>
 
               {/* CTAs */}

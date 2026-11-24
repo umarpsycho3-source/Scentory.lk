@@ -7,13 +7,19 @@ export default function HeroPerfumeVideo() {
   const [isMuted, setIsMuted] = useState(true);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [videoSrc, setVideoSrc] = useState('/hero-perfume-video.mp4');
+  const [videoFit, setVideoFit] = useState('contain');
+  const [videoAspect, setVideoAspect] = useState('auto');
+  const [videoMaxHeight, setVideoMaxHeight] = useState(540);
 
   useEffect(() => {
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
-        if (data && data.heroVideoUrl) {
-          setVideoSrc(data.heroVideoUrl);
+        if (data) {
+          if (data.heroVideoUrl) setVideoSrc(data.heroVideoUrl);
+          if (data.heroVideoFit) setVideoFit(data.heroVideoFit);
+          if (data.heroVideoAspect) setVideoAspect(data.heroVideoAspect);
+          if (data.heroVideoHeight) setVideoMaxHeight(parseInt(data.heroVideoHeight, 10) || 540);
         }
       })
       .catch(() => {});
@@ -29,7 +35,6 @@ export default function HeroPerfumeVideo() {
       playPromise
         .then(() => setIsPlaying(true))
         .catch(() => {
-          // Autoplay was prevented (browser policy), keep muted
           setIsPlaying(false);
         });
     }
@@ -55,12 +60,17 @@ export default function HeroPerfumeVideo() {
   };
 
   return (
-    <div className="relative w-full max-w-md mx-auto flex flex-col items-center">
+    <div className="relative w-full max-w-lg mx-auto flex flex-col items-center">
       {/* Golden Aura Glow Backdrop behind video */}
       <div className="absolute -inset-2 bg-gradient-to-r from-[#d4af37]/25 via-[#fcf6ba]/15 to-[#aa820a]/20 rounded-3xl blur-2xl opacity-75 pointer-events-none animate-pulse" />
 
       {/* Luxury Video Container */}
-      <div className="relative w-full rounded-3xl overflow-hidden glass-panel border-2 border-[#d4af37]/45 shadow-[0_25px_60px_rgba(0,0,0,0.9)] bg-black group">
+      <div 
+        className="relative w-full rounded-3xl overflow-hidden glass-panel border-2 border-[#d4af37]/45 shadow-[0_25px_60px_rgba(0,0,0,0.9)] bg-black group flex items-center justify-center transition-all duration-300"
+        style={{
+          maxHeight: `${videoMaxHeight || 540}px`
+        }}
+      >
         {/* Top Video Header Tag */}
         <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between pointer-events-none">
           <div className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-[#d4af37]/40 text-[10px] text-[#f3e5ab] font-serif-luxury tracking-widest uppercase flex items-center gap-1.5 shadow-lg">
@@ -72,17 +82,21 @@ export default function HeroPerfumeVideo() {
           </span>
         </div>
 
-        {/* Video Element */}
+        {/* Video Element with Full Fit / Adjustable Ratio */}
         <video
           ref={videoRef}
-          key={videoSrc}
+          key={`${videoSrc}-${videoFit}-${videoAspect}`}
           src={videoSrc}
           playsInline
           autoPlay
           loop
           muted={isMuted}
           onLoadedData={() => setHasLoaded(true)}
-          className="w-full aspect-[9/16] max-h-[500px] object-cover cursor-pointer"
+          style={{
+            maxHeight: `${videoMaxHeight || 540}px`,
+            aspectRatio: videoAspect === 'auto' ? 'auto' : (videoAspect === '9/16' ? '9/16' : (videoAspect === '4/5' ? '4/5' : (videoAspect === '1/1' ? '1/1' : (videoAspect === '16/9' ? '16/9' : 'auto'))))
+          }}
+          className={`w-full h-full ${videoFit === 'contain' ? 'object-contain bg-black' : 'object-cover'} cursor-pointer transition-all duration-300`}
           onClick={togglePlay}
         />
 
@@ -99,7 +113,7 @@ export default function HeroPerfumeVideo() {
         )}
 
         {/* Bottom Floating Control Bar */}
-        <div className="absolute bottom-3 inset-x-3 z-20 flex items-center justify-between p-2 rounded-2xl bg-black/80 backdrop-blur-md border border-[#d4af37]/30 shadow-xl text-xs">
+        <div className="absolute bottom-3 inset-x-3 z-20 flex items-center justify-between p-2 rounded-2xl bg-black/80 backdrop-blur-md border border-[#d4af37]/30 shadow-xl text-xs gap-2">
           {/* Play / Pause Toggle */}
           <button
             type="button"
@@ -110,6 +124,22 @@ export default function HeroPerfumeVideo() {
             {isPlaying ? <Pause className="w-4 h-4 text-[#d4af37]" /> : <Play className="w-4 h-4 text-[#d4af37] fill-[#d4af37]" />}
             <span className="text-[10px] uppercase tracking-wider hidden sm:inline">
               {isPlaying ? 'Pause' : 'Play'}
+            </span>
+          </button>
+
+          {/* Sizing & Fit Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setVideoFit(prev => prev === 'contain' ? 'cover' : 'contain');
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-black/50 border border-white/15 hover:border-[#d4af37] text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+            title={videoFit === 'contain' ? 'Switch to Full Fill' : 'Switch to Full Bottle View (Contain)'}
+          >
+            <Maximize2 className="w-3.5 h-3.5 text-[#d4af37]" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold">
+              {videoFit === 'contain' ? 'Full View (Contain)' : 'Fill Frame'}
             </span>
           </button>
 
@@ -126,7 +156,7 @@ export default function HeroPerfumeVideo() {
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-gray-400" /> : <Volume2 className="w-4 h-4 text-[#d4af37] animate-pulse" />}
             <span className="text-[10px] uppercase tracking-wider font-semibold">
-              {isMuted ? 'Tap For Sound' : 'Audio Active'}
+              {isMuted ? 'Sound Off' : 'Sound On'}
             </span>
           </button>
         </div>

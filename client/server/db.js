@@ -42,7 +42,14 @@ function getInitialData() {
         swiftCode: 'CCEYLKX',
         instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
       },
+      heroBadge: "WE'RE LIVE • SCENTORY.LK",
+      heroTitle: "A New Destination For Your",
+      heroSubtitle: "Signature Scent.",
+      heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.",
       heroVideoUrl: '/hero-perfume-video.mp4',
+      heroVideoFit: 'contain',
+      heroVideoAspect: 'auto',
+      heroVideoHeight: 540,
       announcement: '✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons'
     },
     users: [

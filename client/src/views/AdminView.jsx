@@ -3440,7 +3440,78 @@ export default function AdminView({ onBackToShop }) {
                   </div>
                 </div>
 
-                {/* HOMEPAGE HERO COMMERCIAL FILM SETTINGS */}
+                {/* HOMEPAGE HERO STORY & NARRATIVE HEADLINE SETTINGS */}
+                <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
+                  <div>
+                    <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
+                      <span>🏛️ Homepage Hero Content & Story Narrative</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Customize the main headline, luxury gold badge, and decant narrative description displayed on your storefront homepage.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                        Hero Top Badge Pill
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.heroBadge || "WE'RE LIVE • SCENTORY.LK"}
+                        onChange={(e) => setSettings({ ...settings, heroBadge: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        placeholder="e.g. WE'RE LIVE • SCENTORY.LK"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                        Headline Line 1
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.heroTitle || "A New Destination For Your"}
+                        onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        placeholder="e.g. A New Destination For Your"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
+                        Headline Line 2 (Gold Accent)
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.heroSubtitle || "Signature Scent."}
+                        onChange={(e) => setSettings({ ...settings, heroSubtitle: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-[#fcf6ba] font-bold text-xs outline-none focus:border-[#d4af37]"
+                        placeholder="e.g. Signature Scent."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hero Description & Decants Textarea */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                      <span>Hero Description & Decant Sizing Narrative</span>
+                      <span className="text-[10px] text-[#fcf6ba] font-normal">Editable Storefront Copy</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={settings.heroDescription || "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering."}
+                      onChange={(e) => setSettings({ ...settings, heroDescription: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] leading-relaxed"
+                      placeholder="Enter the description displayed under the hero headline..."
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      This text appears directly beneath the main hero headline on your homepage.
+                    </p>
+                  </div>
+                </div>
+
+                {/* HOMEPAGE HERO COMMERCIAL FILM & ADJUSTABLE SIZING SETTINGS */}
                 <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
                   <div className="flex items-center justify-between">
                     <div>
@@ -3448,7 +3519,7 @@ export default function AdminView({ onBackToShop }) {
                         <span>🎬 Homepage Hero Video & Commercial Film</span>
                       </h3>
                       <p className="text-[11px] text-gray-400 mt-0.5">
-                        Upload or replace the luxury commercial video playing in the hero section on the homepage.
+                        Upload or replace your commercial video, and adjust framing/size so the full bottle and video are properly visible without cropping.
                       </p>
                     </div>
                     {settings.heroVideoUrl && settings.heroVideoUrl !== '/hero-perfume-video.mp4' && (
@@ -3463,23 +3534,31 @@ export default function AdminView({ onBackToShop }) {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-                    {/* Live Video Preview Box */}
-                    <div className="rounded-2xl overflow-hidden border border-[#d4af37]/30 bg-black/80 aspect-[9/14] max-h-72 mx-auto md:mx-0 w-full relative group shadow-xl">
+                    {/* Live Video Preview Box with Real Size & Fit */}
+                    <div 
+                      className="rounded-2xl overflow-hidden border border-[#d4af37]/30 bg-black/95 mx-auto md:mx-0 w-full relative group shadow-xl flex items-center justify-center transition-all duration-300"
+                      style={{
+                        maxHeight: '320px',
+                        aspectRatio: (settings.heroVideoAspect && settings.heroVideoAspect !== 'auto') ? settings.heroVideoAspect : 'auto'
+                      }}
+                    >
                       <video
-                        key={settings.heroVideoUrl || '/hero-perfume-video.mp4'}
+                        key={`${settings.heroVideoUrl || '/hero-perfume-video.mp4'}-${settings.heroVideoFit || 'contain'}-${settings.heroVideoAspect || 'auto'}`}
                         src={settings.heroVideoUrl || '/hero-perfume-video.mp4'}
                         playsInline
                         muted
                         autoPlay
                         loop
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full max-h-72 ${(settings.heroVideoFit || 'contain') === 'contain' ? 'object-contain' : 'object-cover'}`}
                       />
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[9px] text-[#f3e5ab] font-mono border border-white/10">
-                        Live Preview
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 text-[9px] text-[#f3e5ab] font-mono border border-white/10 flex items-center gap-1.5">
+                        <span>Live Preview</span>
+                        <span className="text-gray-400">|</span>
+                        <span className="text-emerald-400 uppercase font-semibold">{(settings.heroVideoFit || 'contain')}</span>
                       </div>
                     </div>
 
-                    {/* Upload Controls & URL Input */}
+                    {/* Upload Controls, Video Size & Framing Options */}
                     <div className="md:col-span-2 space-y-4">
                       {/* Direct Video URL */}
                       <div>
@@ -3496,6 +3575,78 @@ export default function AdminView({ onBackToShop }) {
                         <p className="text-[10px] text-gray-500 mt-1">
                           You can paste any direct video URL from Cloudflare, Supabase, Cloudinary, or AWS S3.
                         </p>
+                      </div>
+
+                      {/* Video Framing, Sizing & Fit Controls */}
+                      <div className="p-4 rounded-xl bg-[#14141c] border border-[#d4af37]/25 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#fcf6ba] uppercase tracking-wider">
+                            Video Sizing & Display Framing Controls
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-medium">Proper Full Bottle View</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {/* Video Fit / Cropping Mode */}
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1 font-semibold">
+                              Video Fit Mode
+                            </label>
+                            <select
+                              value={settings.heroVideoFit || 'contain'}
+                              onChange={(e) => setSettings({ ...settings, heroVideoFit: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl bg-black border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] cursor-pointer"
+                            >
+                              <option value="contain">Contain (Full View - No Cropping)</option>
+                              <option value="cover">Cover (Fill Entire Frame)</option>
+                            </select>
+                            <span className="text-[9px] text-gray-500 mt-0.5 block">
+                              "Contain" guarantees the entire perfume bottle is 100% visible.
+                            </span>
+                          </div>
+
+                          {/* Aspect Ratio Frame */}
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1 font-semibold">
+                              Frame Shape (Ratio)
+                            </label>
+                            <select
+                              value={settings.heroVideoAspect || 'auto'}
+                              onChange={(e) => setSettings({ ...settings, heroVideoAspect: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl bg-black border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] cursor-pointer"
+                            >
+                              <option value="auto">Auto (Natural Dimensions)</option>
+                              <option value="9/16">Vertical Reel (9:16)</option>
+                              <option value="4/5">Portrait Post (4:5)</option>
+                              <option value="1/1">Square Box (1:1)</option>
+                              <option value="16/9">Landscape Film (16:9)</option>
+                            </select>
+                            <span className="text-[9px] text-gray-500 mt-0.5 block">
+                              Adapts to your video without stretching.
+                            </span>
+                          </div>
+
+                          {/* Video Player Max Height Scale */}
+                          <div>
+                            <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1 font-semibold">
+                              Height Scale
+                            </label>
+                            <select
+                              value={settings.heroVideoHeight || 540}
+                              onChange={(e) => setSettings({ ...settings, heroVideoHeight: parseInt(e.target.value, 10) })}
+                              className="w-full px-3 py-2 rounded-xl bg-black border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] cursor-pointer"
+                            >
+                              <option value="420">Compact (420px)</option>
+                              <option value="480">Medium (480px)</option>
+                              <option value="540">Standard (540px - Default)</option>
+                              <option value="600">Large (600px)</option>
+                              <option value="680">Extra Large (680px)</option>
+                            </select>
+                            <span className="text-[9px] text-gray-500 mt-0.5 block">
+                              Adjusts the vertical height of the player.
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Upload Video File Directly */}
@@ -3515,7 +3666,7 @@ export default function AdminView({ onBackToShop }) {
                               const reader = new FileReader();
                               reader.onload = () => {
                                 setSettings({ ...settings, heroVideoUrl: reader.result });
-                                alert('New video loaded successfully! Click "Save All Settings" below to publish it live to the homepage.');
+                                alert('New video loaded successfully! Click "Save Store Settings" below to publish it live to the homepage.');
                               };
                               reader.readAsDataURL(file);
                             }}
