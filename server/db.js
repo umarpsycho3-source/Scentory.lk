@@ -87,7 +87,7 @@ class Database {
     this.data = getInitialData();
     this.init();
 
-    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.eearoqvhvmnzsuvdangq:Scentory2026%21@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
     if (Pool && dbUrl) {
       this.initPg(dbUrl);
     }
@@ -201,7 +201,7 @@ class Database {
 
   async ensureConnected() {
     if (!this.pgPool) {
-      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.eearoqvhvmnzsuvdangq:Scentory2026%21@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
       if (Pool && dbUrl) this.initPg(dbUrl);
     }
 
