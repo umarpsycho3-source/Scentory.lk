@@ -3,11 +3,9 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 
 let Pool = null;
-let Client = null;
 try {
   const pg = require('pg');
   Pool = pg.Pool;
-  Client = pg.Client;
 } catch (e) {}
 
 const DB_PATH = path.join(__dirname, 'data', 'database.json');
@@ -49,7 +47,7 @@ function getInitialData() {
       heroTitle: "A New Destination For Your",
       heroSubtitle: "Signature Scent.",
       heroDescription: "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.",
-      heroVideoUrl: '/hero-perfume-video.mp4',
+      heroVideoUrl: '/hero-uploaded-video.mp4',
       heroVideoFit: 'contain',
       heroVideoAspect: 'auto',
       heroVideoHeight: 540,
@@ -86,7 +84,9 @@ class Database {
     this.connectPromise = null;
     this.lastSyncTime = 0;
     this.isSyncing = false;
+    this.data = getInitialData();
     this.init();
+
     const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
     if (Pool && dbUrl) {
       this.initPg(dbUrl);
@@ -117,39 +117,88 @@ class Database {
     if (!this.pgPool || this.isSyncing) return;
     this.isSyncing = true;
     try {
-      await this.pgPool.query('CREATE TABLE IF NOT EXISTS store_data (id VARCHAR(50) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW());');
-      const res = await this.pgPool.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
-      if (res.rows && res.rows.length > 0 && res.rows[0].data) {
-        const remote = res.rows[0].data;
-        const initial = getInitialData();
-        this.data = {
-          ...initial,
-          ...remote,
-          settings: {
-            ...initial.settings,
-            ...(remote.settings || {})
-          },
-          products: Array.isArray(remote.products) ? remote.products : [],
-          users: Array.isArray(remote.users) && remote.users.length > 0 ? remote.users : initial.users,
-          orders: Array.isArray(remote.orders) ? remote.orders : [],
-          reviews: Array.isArray(remote.reviews) ? remote.reviews : [],
-          notifications: Array.isArray(remote.notifications) ? remote.notifications : [],
-          chatMessages: Array.isArray(remote.chatMessages) ? remote.chatMessages : [],
-          passwordResetRequests: Array.isArray(remote.passwordResetRequests) ? remote.passwordResetRequests : []
-        };
-        this.lastSyncTime = Date.now();
-      } else {
-        await this.pgPool.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
-        this.lastSyncTime = Date.now();
+      // 1. Settings
+      try {
+        const sRes = await this.pgPool.query("SELECT data FROM store_settings WHERE id = 'general'");
+        if (sRes.rows.length > 0 && sRes.rows[0].data) {
+          const initial = getInitialData();
+          this.data.settings = { ...initial.settings, ...sRes.rows[0].data };
+        } else {
+          await this.pgPool.query(
+            "INSERT INTO store_settings (id, data, updated_at) VALUES ('general', $1, NOW()) ON CONFLICT (id) DO NOTHING",
+            [JSON.stringify(this.data.settings)]
+          );
+        }
+      } catch (e) {
+        console.error('Sync settings error:', e.message);
       }
+
+      // 2. Users
+      try {
+        const uRes = await this.pgPool.query("SELECT data FROM store_users ORDER BY updated_at DESC");
+        if (uRes.rows.length > 0) {
+          this.data.users = uRes.rows.map(r => r.data);
+        } else {
+          for (const u of this.data.users) {
+            await this.pgPool.query(
+              "INSERT INTO store_users (id, email, data, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (id) DO NOTHING",
+              [u.id, (u.email || '').toLowerCase(), JSON.stringify(u)]
+            );
+          }
+        }
+      } catch (e) {
+        console.error('Sync users error:', e.message);
+      }
+
+      // 3. Products
+      try {
+        const pRes = await this.pgPool.query("SELECT data FROM store_products ORDER BY updated_at DESC");
+        this.data.products = pRes.rows.map(r => r.data);
+      } catch (e) {
+        console.error('Sync products error:', e.message);
+      }
+
+      // 4. Orders
+      try {
+        const oRes = await this.pgPool.query("SELECT data FROM store_orders ORDER BY created_at DESC");
+        this.data.orders = oRes.rows.map(r => r.data);
+      } catch (e) {
+        console.error('Sync orders error:', e.message);
+      }
+
+      // 5. Reviews
+      try {
+        const rRes = await this.pgPool.query("SELECT data FROM store_reviews ORDER BY created_at DESC");
+        this.data.reviews = rRes.rows.map(r => r.data);
+      } catch (e) {
+        console.error('Sync reviews error:', e.message);
+      }
+
+      // 6. Notifications
+      try {
+        const nRes = await this.pgPool.query("SELECT data FROM store_notifications ORDER BY created_at DESC");
+        this.data.notifications = nRes.rows.map(r => r.data);
+      } catch (e) {
+        console.error('Sync notifs error:', e.message);
+      }
+
+      // 7. Chat
+      try {
+        const cRes = await this.pgPool.query("SELECT data FROM store_chat ORDER BY created_at ASC");
+        this.data.chatMessages = cRes.rows.map(r => r.data);
+      } catch (e) {
+        console.error('Sync chat error:', e.message);
+      }
+
+      this.lastSyncTime = Date.now();
+      try { fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8'); } catch (e) {}
     } catch (err) {
-      console.error('Supabase sync error:', err.message);
+      console.error('Supabase sync overall error:', err.message);
     } finally {
       this.isSyncing = false;
     }
   }
 
-  // Ensures Supabase is connected and initially synced before processing API requests
   async ensureConnected() {
     if (!this.pgPool) {
       const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
@@ -162,20 +211,23 @@ class Database {
       } catch (e) {
         console.error('Initial Supabase wait failed:', e.message);
       }
-    } else if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
+    } else if (Date.now() - this.lastSyncTime > 4000 && !this.isSyncing) {
       this.syncFromSupabase().catch(() => {});
     }
   }
 
   init() {
     try {
-      if (!fs.existsSync(DB_PATH)) {
-        const initial = getInitialData();
-        try { fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), 'utf-8'); } catch (e) {}
-        this.data = initial;
-      } else {
+      if (fs.existsSync(DB_PATH)) {
         const raw = fs.readFileSync(DB_PATH, 'utf-8');
-        this.data = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        this.data = {
+          ...getInitialData(),
+          ...parsed,
+          settings: { ...getInitialData().settings, ...(parsed.settings || {}) },
+          products: parsed.products || [],
+          users: parsed.users && parsed.users.length > 0 ? parsed.users : getInitialData().users
+        };
       }
     } catch (err) {
       this.data = getInitialData();
@@ -184,83 +236,151 @@ class Database {
 
   async save() {
     try { fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8'); } catch (e) {}
-    this.lastSyncTime = Date.now();
-    if (!this.pgPool) {
-      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
-      if (Pool && dbUrl) this.initPg(dbUrl);
-    }
-    if (this.pgPool) {
-      try {
-        await this.pgPool.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
-      } catch (err) {
-        console.error('Supabase save error:', err.message);
-      }
-    }
   }
 
-  // Users
+  // ==================== USERS ====================
   getUsers() { return this.data.users || []; }
   getUserById(id) { return this.getUsers().find(u => u.id === id); }
-  getUserByEmail(email) { return this.getUsers().find(u => u.email.toLowerCase() === email.toLowerCase()); }
+  getUserByEmail(email) {
+    if (!email) return null;
+    const clean = email.trim().toLowerCase();
+    return this.getUsers().find(u => (u.email || '').trim().toLowerCase() === clean);
+  }
+
   async addUser(user) {
-    this.data.users.push(user);
+    // Add to in-memory array immediately
+    const existingIdx = this.data.users.findIndex(u => (u.email || '').toLowerCase() === (user.email || '').toLowerCase());
+    if (existingIdx !== -1) {
+      this.data.users[existingIdx] = user;
+    } else {
+      this.data.users.unshift(user);
+    }
     await this.save();
+
+    // Persist directly to store_users table
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_users (id, email, data, updated_at) 
+           VALUES ($1, $2, $3, NOW()) 
+           ON CONFLICT (email) DO UPDATE SET data = $3, updated_at = NOW();`,
+          [user.id, (user.email || '').toLowerCase(), JSON.stringify(user)]
+        );
+      } catch (err) {
+        console.error('Error saving user to Supabase:', err.message);
+      }
+    }
     return user;
   }
+
   async updateUser(id, updates) {
     const idx = this.data.users.findIndex(u => u.id === id);
     if (idx !== -1) {
-      this.data.users[idx] = { ...this.data.users[idx], ...updates };
+      this.data.users[idx] = { ...this.data.users[idx], ...updates, updatedAt: new Date().toISOString() };
+      const updatedUser = this.data.users[idx];
       await this.save();
-      return this.data.users[idx];
-    }
-    return null;
-  }
-  async deleteUser(id) {
-    const idx = this.data.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      const removed = this.data.users.splice(idx, 1)[0];
-      await this.save();
-      return removed;
+
+      if (this.pgPool) {
+        try {
+          await this.pgPool.query(
+            `UPDATE store_users SET data = $2, email = $3, updated_at = NOW() WHERE id = $1;`,
+            [id, JSON.stringify(updatedUser), (updatedUser.email || '').toLowerCase()]
+          );
+        } catch (err) {
+          console.error('Error updating user in Supabase:', err.message);
+        }
+      }
+      return updatedUser;
     }
     return null;
   }
 
-  // Products
+  async deleteUser(id) {
+    const idx = this.data.users.findIndex(u => u.id === id);
+    let removed = null;
+    if (idx !== -1) {
+      removed = this.data.users.splice(idx, 1)[0];
+      await this.save();
+    }
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_users WHERE id = $1;`, [id]);
+      } catch (err) {
+        console.error('Error deleting user from Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
+  }
+
+  // ==================== PRODUCTS ====================
   getProducts() { return this.data.products || []; }
   getProductById(id) { return this.getProducts().find(p => p.id === id); }
+
   async addProduct(product) {
     this.data.products.unshift(product);
     await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_products (id, data, updated_at) 
+           VALUES ($1, $2, NOW()) 
+           ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();`,
+          [product.id, JSON.stringify(product)]
+        );
+      } catch (err) {
+        console.error('Error saving product to Supabase:', err.message);
+      }
+    }
     return product;
   }
+
   async updateProduct(id, updates) {
     const idx = this.data.products.findIndex(p => p.id === id);
     if (idx !== -1) {
       this.data.products[idx] = { ...this.data.products[idx], ...updates, updatedAt: new Date().toISOString() };
+      const updatedProd = this.data.products[idx];
       await this.save();
-      return this.data.products[idx];
+
+      if (this.pgPool) {
+        try {
+          await this.pgPool.query(
+            `UPDATE store_products SET data = $2, updated_at = NOW() WHERE id = $1;`,
+            [id, JSON.stringify(updatedProd)]
+          );
+        } catch (err) {
+          console.error('Error updating product in Supabase:', err.message);
+        }
+      }
+      return updatedProd;
     }
     return null;
   }
+
   async deleteProduct(id) {
     const idx = this.data.products.findIndex(p => p.id === id);
+    let removed = null;
     if (idx !== -1) {
-      const removed = this.data.products.splice(idx, 1);
+      removed = this.data.products.splice(idx, 1)[0];
       await this.save();
-      return removed[0];
     }
-    // If not found in current array, ensure it is saved clean
-    await this.save();
-    return { id, deleted: true };
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_products WHERE id = $1;`, [id]);
+      } catch (err) {
+        console.error('Error deleting product from Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
   }
 
-  // Orders
+  // ==================== ORDERS ====================
   getOrders() { return this.data.orders || []; }
   getOrderById(id) {
     const target = String(id || '').trim().toLowerCase();
     return this.getOrders().find(o => String(o.id || '').trim().toLowerCase() === target);
   }
+
   getUserOrders(userId, email) {
     const list = this.getOrders();
     const cleanId = String(userId || '').trim();
@@ -275,6 +395,7 @@ class Database {
   getOrdersByUserId(userId, email) {
     return this.getUserOrders(userId, email);
   }
+
   async addOrder(orderData) {
     const order = {
       id: 'SCNT-' + Math.floor(1000 + Math.random() * 9000),
@@ -284,39 +405,71 @@ class Database {
       ...orderData
     };
     this.data.orders.unshift(order);
+    await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_orders (id, data, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2;`,
+          [order.id, JSON.stringify(order)]
+        );
+      } catch (err) {
+        console.error('Error saving order to Supabase:', err.message);
+      }
+    }
+
     await this.addNotification({
       type: 'new_order',
       title: 'New Bank Transfer Order',
-      message: 'New bank transfer order placed. Verify deposit slip.',
+      message: `New bank transfer order placed #${order.id}. Verify deposit slip.`,
       orderId: order.id,
       timestamp: new Date().toISOString()
     });
-    await this.save();
+
     return order;
   }
+
   async updateOrder(id, updates) {
     const target = String(id || '').trim().toLowerCase();
     const idx = this.data.orders.findIndex(o => String(o.id || '').trim().toLowerCase() === target);
     if (idx !== -1) {
-      this.data.orders[idx] = { ...this.data.orders[idx], ...updates };
+      this.data.orders[idx] = { ...this.data.orders[idx], ...updates, updatedAt: new Date().toISOString() };
+      const updatedOrder = this.data.orders[idx];
       await this.save();
-      return this.data.orders[idx];
-    }
-    return null;
-  }
-  async deleteOrder(id) {
-    const target = String(id || '').trim().toLowerCase();
-    const idx = this.data.orders.findIndex(o => String(o.id || '').trim().toLowerCase() === target);
-    if (idx !== -1) {
-      const removed = this.data.orders.splice(idx, 1);
-      await this.save();
-      return removed[0];
+
+      if (this.pgPool) {
+        try {
+          await this.pgPool.query(`UPDATE store_orders SET data = $2 WHERE id = $1;`, [updatedOrder.id, JSON.stringify(updatedOrder)]);
+        } catch (err) {
+          console.error('Error updating order in Supabase:', err.message);
+        }
+      }
+      return updatedOrder;
     }
     return null;
   }
 
-  // Reviews
+  async deleteOrder(id) {
+    const target = String(id || '').trim().toLowerCase();
+    const idx = this.data.orders.findIndex(o => String(o.id || '').trim().toLowerCase() === target);
+    let removed = null;
+    if (idx !== -1) {
+      removed = this.data.orders.splice(idx, 1)[0];
+      await this.save();
+    }
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_orders WHERE LOWER(id) = $1;`, [target]);
+      } catch (err) {
+        console.error('Error deleting order from Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
+  }
+
+  // ==================== REVIEWS ====================
   getReviews() { return this.data.reviews || []; }
+
   async addReview(reviewData) {
     const review = {
       id: 'rev_' + Date.now(),
@@ -326,23 +479,43 @@ class Database {
     if (!this.data.reviews) this.data.reviews = [];
     this.data.reviews.unshift(review);
     await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_reviews (id, data, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2;`,
+          [review.id, JSON.stringify(review)]
+        );
+      } catch (err) {
+        console.error('Error saving review to Supabase:', err.message);
+      }
+    }
     return review;
   }
+
   async deleteReview(id) {
     if (!this.data.reviews) return null;
     const idx = this.data.reviews.findIndex(r => r.id === id);
+    let removed = null;
     if (idx !== -1) {
-      const removed = this.data.reviews.splice(idx, 1);
+      removed = this.data.reviews.splice(idx, 1)[0];
       await this.save();
-      return removed[0];
     }
-    return null;
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_reviews WHERE id = $1;`, [id]);
+      } catch (err) {
+        console.error('Error deleting review from Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
   }
 
-  // Settings
+  // ==================== SETTINGS ====================
   getSettings() { return this.data.settings || {}; }
+
   async updateSettings(updates) {
-    if (updates && updates.heroVideoUrl && updates.heroVideoUrl.startsWith('data:video/')) {
+    if (updates && updates.heroVideoUrl && typeof updates.heroVideoUrl === 'string' && updates.heroVideoUrl.startsWith('data:video/')) {
       try {
         const matches = updates.heroVideoUrl.match(/^data:video\/\w+;base64,(.+)$/);
         if (matches) {
@@ -358,78 +531,158 @@ class Database {
         console.error('Video extraction error:', e);
       }
     }
-    this.data.settings = { ...this.data.settings, ...updates };
+
+    this.data.settings = { ...this.data.settings, ...updates, updatedAt: new Date().toISOString() };
     await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_settings (id, data, updated_at) 
+           VALUES ('general', $1, NOW()) 
+           ON CONFLICT (id) DO UPDATE SET data = $1, updated_at = NOW();`,
+          [JSON.stringify(this.data.settings)]
+        );
+      } catch (err) {
+        console.error('Error saving settings to Supabase:', err.message);
+      }
+    }
     return this.data.settings;
   }
 
-  // Chat
+  // ==================== CHAT ====================
   getChatMessages() { return this.data.chatMessages || []; }
+
   async addChatMessage(msg) {
     if (!this.data.chatMessages) this.data.chatMessages = [];
-    this.data.chatMessages.unshift(msg);
+    this.data.chatMessages.push(msg);
     await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_chat (id, data, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO NOTHING;`,
+          [msg.id || ('chat_' + Date.now()), JSON.stringify(msg)]
+        );
+      } catch (err) {
+        console.error('Error saving chat message to Supabase:', err.message);
+      }
+    }
     return msg;
   }
+
   async deleteChatMessage(id) {
     if (!this.data.chatMessages) return null;
     const idx = this.data.chatMessages.findIndex(m => m.id === id);
+    let removed = null;
     if (idx !== -1) {
-      const removed = this.data.chatMessages.splice(idx, 1);
+      removed = this.data.chatMessages.splice(idx, 1)[0];
       await this.save();
-      return removed[0];
     }
-    return null;
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_chat WHERE id = $1;`, [id]);
+      } catch (err) {
+        console.error('Error deleting chat from Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
   }
 
-  // Notifications
+  // ==================== NOTIFICATIONS ====================
   getNotifications() { return this.data.notifications || []; }
+
   async addNotification(notif) {
     if (!this.data.notifications) this.data.notifications = [];
-    this.data.notifications.unshift({
+    const item = {
       id: 'notif_' + Date.now() + Math.random().toString(36).substring(2, 6),
       read: false,
       ...notif
-    });
+    };
+    this.data.notifications.unshift(item);
     if (this.data.notifications.length > 100) {
       this.data.notifications = this.data.notifications.slice(0, 100);
     }
     await this.save();
-    return notif;
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(
+          `INSERT INTO store_notifications (id, data, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO NOTHING;`,
+          [item.id, JSON.stringify(item)]
+        );
+      } catch (err) {
+        console.error('Error saving notification to Supabase:', err.message);
+      }
+    }
+    return item;
   }
+
   async markAllNotificationsRead() {
     if (!this.data.notifications) return [];
     this.data.notifications.forEach(n => { n.read = true; });
     await this.save();
+
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`UPDATE store_notifications SET data = jsonb_set(data, '{read}', 'true'::jsonb);`);
+      } catch (err) {
+        console.error('Error marking notifications in Supabase:', err.message);
+      }
+    }
     return this.data.notifications;
   }
+
   async markNotificationRead(id) {
     if (!this.data.notifications) return null;
     const notif = this.data.notifications.find(n => n.id === id);
     if (notif) {
       notif.read = true;
       await this.save();
+      if (this.pgPool) {
+        try {
+          await this.pgPool.query(`UPDATE store_notifications SET data = jsonb_set(data, '{read}', 'true'::jsonb) WHERE id = $1;`, [id]);
+        } catch (err) {
+          console.error('Error marking notif in Supabase:', err.message);
+        }
+      }
       return notif;
     }
     return null;
   }
+
   async clearAllNotifications() {
     this.data.notifications = [];
     await this.save();
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_notifications;`);
+      } catch (err) {
+        console.error('Error clearing notifs in Supabase:', err.message);
+      }
+    }
     return [];
   }
+
   async deleteNotification(id) {
     if (!this.data.notifications) return null;
     const idx = this.data.notifications.findIndex(n => n.id === id);
+    let removed = null;
     if (idx !== -1) {
-      const removed = this.data.notifications.splice(idx, 1);
+      removed = this.data.notifications.splice(idx, 1)[0];
       await this.save();
-      return removed[0];
     }
-    return null;
+    if (this.pgPool) {
+      try {
+        await this.pgPool.query(`DELETE FROM store_notifications WHERE id = $1;`, [id]);
+      } catch (err) {
+        console.error('Error deleting notif in Supabase:', err.message);
+      }
+    }
+    return removed || { id, deleted: true };
   }
 
-  // Password Reset
+  // ==================== PASSWORD RESET ====================
   async createPasswordResetRequest(email, user) {
     if (!this.data.passwordResetRequests) this.data.passwordResetRequests = [];
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -447,7 +700,7 @@ class Database {
     await this.addNotification({
       type: 'password_reset_request',
       title: 'Password Reset Authorization',
-      message: 'Customer requested password reset.',
+      message: `Customer ${user.name} (${user.email}) requested password reset.`,
       code,
       email: user.email,
       createdAt: new Date().toISOString()

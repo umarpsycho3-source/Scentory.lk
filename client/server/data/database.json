@@ -13,27 +13,48 @@
     "deliveryFee": 500,
     "freeDeliveryThreshold": 999999999,
     "bankDetails": {
-      "bankName": "Commercial Bank of Ceylon",
-      "accountName": "SCENTORY LANKA (PVT) LTD",
-      "accountNumber": "8012398456",
-      "branch": "Kollupitiya Branch (Code: 045)",
+      "branch": "Gampola Branch",
+      "bankName": "Commercial Bank",
       "swiftCode": "CCEYLKX",
-      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below."
+      "accountName": "S M Suhail",
+      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.",
+      "accountNumber": "8021353334"
     },
-    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons",
-    "heroVideoUrl": "/hero-uploaded-video.mp4"
+    "heroBadge": "WE'RE LIVE • SCENTORY.LK",
+    "heroTitle": "A New Destination For Your",
+    "heroSubtitle": "Signature Scent.",
+    "heroDescription": "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.",
+    "heroVideoUrl": "/hero-uploaded-video.mp4",
+    "heroVideoFit": "contain",
+    "heroVideoAspect": "auto",
+    "heroVideoHeight": 540,
+    "shopBadge": "Exclusive Fragrance Collection",
+    "shopTitle": "Distinguished Scents For Every Occasion",
+    "shopDescription": "Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).",
+    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons"
   },
   "users": [
     {
+      "id": "usr_ayaan_mwuwcgvo",
+      "city": "Kandy",
+      "name": "Ayaan",
+      "role": "customer",
+      "email": "mohamad@gmail.com",
+      "phone": "0771813023",
+      "address": "313,Nawalapitya road Ulapane",
+      "password": "$2b$10$dhBpLNelSlg9GVNh8BwMYOmhFCKd2MfnPlWhzvQgMrhTIC5.Imnqm",
+      "createdAt": "2026-11-24T16:15:59.604Z"
+    },
+    {
       "id": "usr_admin",
+      "city": "Kandy",
       "name": "Store Administrator",
-      "email": "admin@scentory.lk",
-      "password": "$2b$10$R3UDRWq6O88Tqb.mVKcQLOcQHxtP9ukuGZeyh/jf4rwqNf0LP3JCK",
       "role": "admin",
+      "email": "admin@scentory.lk",
       "phone": "0763151311",
       "address": "SCENTORY Flagship Studio, Ulapane",
-      "city": "Kandy",
-      "createdAt": "2026-11-24T08:56:42.428Z"
+      "password": "$2b$10$R3UDRWq6O88Tqb.mVKcQLOcQHxtP9ukuGZeyh/jf4rwqNf0LP3JCK",
+      "createdAt": "2026-11-24T16:15:59.356Z"
     }
   ],
   "products": [],

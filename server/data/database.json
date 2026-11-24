@@ -1,5 +1,50 @@
 {
+  "settings": {
+    "storeName": "SCENTORY.LK",
+    "brandSubtitle": "A New Destination for Your Signature Scent",
+    "currency": "LKR",
+    "currencySymbol": "Rs. ",
+    "contactEmail": "orders@scentory.lk",
+    "contactPhone": "0763151311",
+    "whatsappNumber": "0763151311",
+    "instagramHandle": "@scentory.lk",
+    "instagramUrl": "https://www.instagram.com/scentory.lk",
+    "address": "313, Nawalapitiya Road, Ulapane, Sri Lanka",
+    "deliveryFee": 500,
+    "freeDeliveryThreshold": 999999999,
+    "bankDetails": {
+      "branch": "Gampola Branch",
+      "bankName": "Commercial Bank",
+      "swiftCode": "CCEYLKX",
+      "accountName": "S M Suhail",
+      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.",
+      "accountNumber": "8021353334"
+    },
+    "heroBadge": "WE'RE LIVE • SCENTORY.LK",
+    "heroTitle": "A New Destination For Your",
+    "heroSubtitle": "Signature Scent.",
+    "heroDescription": "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 20ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.",
+    "heroVideoUrl": "/hero-uploaded-video.mp4",
+    "heroVideoFit": "contain",
+    "heroVideoAspect": "auto",
+    "heroVideoHeight": 540,
+    "shopBadge": "Exclusive Fragrance Collection",
+    "shopTitle": "Distinguished Scents For Every Occasion",
+    "shopDescription": "Available in precision travel decants (10ml, 20ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).",
+    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons"
+  },
   "users": [
+    {
+      "id": "usr_ayaan_mwuwcgvo",
+      "city": "Kandy",
+      "name": "Ayaan",
+      "role": "customer",
+      "email": "mohamad@gmail.com",
+      "phone": "0771813023",
+      "address": "313,Nawalapitya road Ulapane",
+      "password": "$2b$10$dhBpLNelSlg9GVNh8BwMYOmhFCKd2MfnPlWhzvQgMrhTIC5.Imnqm",
+      "createdAt": "2026-11-24T16:15:59.604Z"
+    },
     {
       "id": "usr_admin",
       "city": "Kandy",
@@ -9,69 +54,13 @@
       "phone": "0763151311",
       "address": "SCENTORY Flagship Studio, Ulapane",
       "password": "$2b$10$R3UDRWq6O88Tqb.mVKcQLOcQHxtP9ukuGZeyh/jf4rwqNf0LP3JCK",
-      "createdAt": "2026-11-24T08:56:42.428Z",
-      "isPremium": true,
-      "membershipTier": "VIP Premium Member"
-    },
-    {
-      "id": "usr_mwup88mtox5w",
-      "city": "Kandy, Gampola",
-      "name": "Mohamad Umar",
-      "role": "customer",
-      "email": "mohamad@gmail.com",
-      "phone": "0764633023",
-      "address": "313, Nawalapitiya Road, Ulapane",
-      "password": "$2b$10$wE7du2ZZxx4taayB9/oJq.jMJMMDrO/LjUfRsiPd.JgMeqnzo2Q5q",
-      "createdAt": "2026-11-24T12:56:44.981Z"
-    },
-    {
-      "id": "usr_mwupcz3q7exu",
-      "city": "Kandy",
-      "name": "Ayaan",
-      "role": "customer",
-      "email": "ayaan@gmail.com",
-      "phone": "7726468890",
-      "address": "313/2 Nawalapitiya, Ulapane",
-      "password": "$2b$10$JQNqYBuqvp1saNS/ytLjI.B8TOw4nhDDhu8Qz5t74Cj8KUunw5y2q",
-      "createdAt": "2026-11-24T13:00:25.910Z"
+      "createdAt": "2026-11-24T16:15:59.356Z"
     }
   ],
+  "products": [],
   "orders": [],
   "reviews": [],
-  "products": [],
-  "settings": {
-    "address": "Ulapane, Sri Lanka",
-    "currency": "LKR",
-    "heroBadge": "WE'RE LIVE • SCENTORY.LK",
-    "heroTitle": "A New Destination For Your",
-    "storeName": "SCENTORY.LK",
-    "bankDetails": {
-      "branch": "Gampola Branch",
-      "bankName": "Commercial Bank",
-      "swiftCode": "CCEYLKX",
-      "accountName": "S M Suhail",
-      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.",
-      "accountNumber": "8021353334"
-    },
-    "deliveryFee": 500,
-    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 5000 | Authentic Luxury Decants & Flacons",
-    "contactEmail": "orders@scentory.lk",
-    "contactPhone": "0763151311",
-    "heroSubtitle": "Signature Scent.",
-    "heroVideoFit": "contain",
-    "heroVideoUrl": "/hero-uploaded-video.mp4",
-    "instagramUrl": "https://www.instagram.com/scentory.lk",
-    "brandSubtitle": "A New Destination for Your Signature Scent",
-    "currencySymbol": "Rs. ",
-    "whatsappNumber": "0763151311",
-    "heroDescription": "Discover artisan extrait de parfum, opulent royal ouds, and custom-decanted atomizers (10ml, 30ml, 50ml, 100ml). Curated exclusively for Sri Lanka’s fragrance lovers with verified bank transfer ordering.",
-    "heroVideoAspect": "9/16",
-    "heroVideoHeight": 540,
-    "instagramHandle": "@scentory.lk",
-    "shopDescription": "Available in precision travel decants (10ml, 30ml) and full flacons (50ml, 100ml). All prices in Sri Lankan Rupees (LKR).",
-    "freeDeliveryThreshold": 5
-  },
-  "chatMessages": [],
   "notifications": [],
+  "chatMessages": [],
   "passwordResetRequests": []
 }
