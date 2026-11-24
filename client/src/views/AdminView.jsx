@@ -927,7 +927,7 @@ export default function AdminView({ onBackToShop }) {
                 required
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
-                placeholder="admin@scentory.lk"
+                placeholder="name@domain.com"
                 className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none"
               />
             </div>
@@ -941,7 +941,7 @@ export default function AdminView({ onBackToShop }) {
                 required
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter master security key"
                 className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs focus:border-[#d4af37] outline-none"
               />
             </div>
