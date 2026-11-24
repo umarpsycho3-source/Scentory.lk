@@ -4,7 +4,11 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:match*",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/uploads/:match*",
       "destination": "/api/index.js"
     },
     {
@@ -17,11 +21,7 @@
     },
     {
       "source": "/brand-logo.png",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/uploads/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/brand-logo.png"
     },
     {
       "source": "/(.*)",
