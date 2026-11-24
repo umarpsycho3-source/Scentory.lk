@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "SCENTORY.LK - Signature Fragrances Sri Lanka E-Commerce Platform",
   "main": "server/server.js",
-  "workspaces": [
-    "client"
-  ],
   "scripts": {
     "start": "node server/server.js",
     "server": "node server/server.js",

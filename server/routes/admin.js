@@ -142,10 +142,39 @@ router.get('/users', async (req, res) => {
     const users = db.getUsers();
     const orders = db.getOrders();
 
-    const customerList = users.map(u => {
+    const customerMap = new Map();
+
+    // 1. Add all registered users
+    users.forEach(u => {
+      const key = (u.email || '').toLowerCase().trim() || u.id;
+      customerMap.set(key, { ...u });
+    });
+
+    // 2. Add any customer details from orders
+    orders.forEach(o => {
+      const c = o.customerDetails;
+      if (c) {
+        const key = (c.email || '').toLowerCase().trim() || (c.phone || '').trim();
+        if (key && !customerMap.has(key)) {
+          customerMap.set(key, {
+            id: o.userId || ('cust_' + Math.random().toString(36).substring(2, 7)),
+            name: c.name || 'Customer',
+            email: c.email || '',
+            phone: c.phone || '',
+            address: c.address || '',
+            city: c.city || '',
+            role: 'customer',
+            createdAt: o.createdAt
+          });
+        }
+      }
+    });
+
+    const customerList = Array.from(customerMap.values()).map(u => {
       const userOrders = orders.filter(o => 
         o.userId === u.id || 
-        (u.email && o.customerDetails?.email && o.customerDetails.email.toLowerCase() === u.email.toLowerCase())
+        (u.email && o.customerDetails?.email && o.customerDetails.email.toLowerCase().trim() === u.email.toLowerCase().trim()) ||
+        (u.phone && o.customerDetails?.phone && o.customerDetails.phone.trim() === u.phone.trim())
       );
       const verifiedSpent = userOrders
         .filter(o => o.paymentStatus === 'verified')
