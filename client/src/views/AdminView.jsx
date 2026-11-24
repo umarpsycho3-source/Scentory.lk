@@ -15,6 +15,14 @@ export default function AdminView({ onBackToShop }) {
   // Active admin tab: 'dashboard' | 'orders' | 'products' | 'stock' | 'reports' | 'settings'
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Sri Lanka Phone Number Formatter for WhatsApp (converts 077... / 77... to 9477...)
+  const formatLKPhone = (phone) => {
+    let cleaned = String(phone || '').replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) cleaned = '94' + cleaned.substring(1);
+    if (!cleaned.startsWith('94') && cleaned.length === 9) cleaned = '94' + cleaned;
+    return cleaned;
+  };
+
   // Admin login state if not already logged in
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -1788,7 +1796,7 @@ export default function AdminView({ onBackToShop }) {
                         {(selectedOrder.customerDetails?.phone || selectedOrder.phone) && (
                           <div className="mt-2 flex items-center gap-2">
                             <a
-                              href={`https://wa.me/${String(selectedOrder.customerDetails?.phone || selectedOrder.phone).replace(/[^0-9]/g, '')}`}
+                              href={`https://wa.me/${formatLKPhone(selectedOrder.customerDetails?.phone || selectedOrder.phone)}?text=${encodeURIComponent(`Hello ${selectedOrder.customerDetails?.name || 'Customer'}, contacting you regarding your SCENTORY.LK order #${selectedOrder.id}...`)}`}
                               target="_blank"
                               rel="noreferrer"
                               className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-[11px] inline-flex items-center gap-1"
@@ -1954,6 +1962,68 @@ export default function AdminView({ onBackToShop }) {
                             <span>✕ Reject Fake Slip</span>
                           </button>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Customer WhatsApp 1-Click Instant Updates */}
+                    <div className="p-4 rounded-2xl bg-[#14141c] border border-emerald-500/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
+                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                          <span>1-Click Customer WhatsApp Updates</span>
+                        </label>
+                        <span className="text-[10px] text-gray-400">100% Free Direct Message</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Notify Payment Verified */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const rawPhone = selectedOrder.customerDetails?.phone || selectedOrder.phone;
+                            const phone = formatLKPhone(rawPhone);
+                            const name = selectedOrder.customerDetails?.name || selectedOrder.customerName || 'Customer';
+                            const orderId = selectedOrder.id;
+                            const total = (selectedOrder.totalAmount || selectedOrder.finalTotal || 0).toLocaleString();
+                            const msg = encodeURIComponent(
+                              `*PAYMENT VERIFIED - SCENTORY.LK*\n\n` +
+                              `Dear ${name},\n\n` +
+                              `Your bank transfer payment for Order *#${orderId}* (Rs. ${total}) has been verified by our accounts team! ✨\n\n` +
+                              `Your signature fragrances are now being hand-decanted and prepared for courier dispatch.\n\n` +
+                              `Thank you for choosing SCENTORY.LK!`
+                            );
+                            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                          }}
+                          className="py-2.5 px-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 hover:bg-emerald-600 hover:text-white text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>WhatsApp: Payment Verified</span>
+                        </button>
+
+                        {/* Notify Order Dispatched */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const rawPhone = selectedOrder.customerDetails?.phone || selectedOrder.phone;
+                            const phone = formatLKPhone(rawPhone);
+                            const name = selectedOrder.customerDetails?.name || selectedOrder.customerName || 'Customer';
+                            const orderId = selectedOrder.id;
+                            const address = selectedOrder.customerDetails?.address || 'your destination address';
+                            const msg = encodeURIComponent(
+                              `*ORDER DISPATCHED - SCENTORY.LK*\n\n` +
+                              `Dear ${name},\n\n` +
+                              `Great news! Your fragrance order *#${orderId}* has been dispatched via verified courier for island-wide delivery to:\n` +
+                              `📍 ${address}\n\n` +
+                              `Please ensure someone is available at the delivery location. Feel free to reply here if you have any questions!\n\n` +
+                              `SCENTORY.LK • Luxury Fragrances`
+                            );
+                            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+                          }}
+                          className="py-2.5 px-3 rounded-xl bg-blue-950/80 border border-blue-500/40 hover:bg-blue-600 hover:text-white text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>WhatsApp: Order Dispatched</span>
+                        </button>
                       </div>
                     </div>
 

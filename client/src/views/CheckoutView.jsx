@@ -186,8 +186,12 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
         });
       } catch (e) {}
 
-      // Automatically launch WhatsApp with Full Customer & Order Details
+      // Automatically launch WhatsApp directly on customer device with full order summary
       try {
+        let storeWa = (bankSettings?.whatsappNumber || '0763151311').replace(/[^0-9]/g, '');
+        if (storeWa.startsWith('0')) storeWa = '94' + storeWa.substring(1);
+        if (!storeWa.startsWith('94')) storeWa = '94' + storeWa;
+
         const itemsList = (data.order.items || []).map(i => `${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1}`).join(', ');
         const waText = encodeURIComponent(
           `*NEW ORDER NOTIFICATION - SCENTORY.LK*\n\n` +
@@ -195,13 +199,18 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
           `*Customer Name:* ${data.order.customerDetails?.name}\n` +
           `*WhatsApp / Phone:* ${data.order.customerDetails?.phone}\n` +
           `*Delivery Address:* ${data.order.customerDetails?.address}${data.order.customerDetails?.city ? ', ' + data.order.customerDetails?.city : ''}\n` +
-          `*Items:* ${itemsList}\n` +
+          `*Purchased Fragrances:*\n${(data.order.items || []).map(i => `  • ${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1} - Rs. ${((i.price || 0) * (i.quantity || 1)).toLocaleString()}`).join('\n')}\n\n` +
           `*Delivery Fee:* Rs. 500\n` +
-          `*Total Amount:* Rs. ${data.order.finalTotal?.toLocaleString()}\n` +
+          `*Final Total:* Rs. ${data.order.finalTotal?.toLocaleString()}\n` +
           `*Payment Status:* Bank Transfer Receipt Uploaded\n\n` +
-          `_I have placed my order and uploaded the bank slip. Please verify and confirm dispatch. Thank you!_`
+          `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. Please verify and confirm dispatch. Thank you!_`
         );
-        window.open(`https://wa.me/94763151311?text=${waText}`, '_blank');
+        const autoWhatsAppUrl = `https://wa.me/${storeWa}?text=${waText}`;
+
+        // Direct redirection into the WhatsApp app without mobile popup blocker
+        setTimeout(() => {
+          window.location.href = autoWhatsAppUrl;
+        }, 700);
       } catch (e) {}
 
     } catch (err) {
@@ -213,6 +222,10 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
 
   // SUCCESS SCREEN WITH ENHANCED ADMIN VERIFICATION & NON-RETURNABLE NOTICE
   if (placedOrder) {
+    let storeWa = (bankSettings?.whatsappNumber || '0763151311').replace(/[^0-9]/g, '');
+    if (storeWa.startsWith('0')) storeWa = '94' + storeWa.substring(1);
+    if (!storeWa.startsWith('94')) storeWa = '94' + storeWa;
+
     const itemsList = (placedOrder.items || []).map(i => `${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1}`).join(', ');
     const whatsappMsg = encodeURIComponent(
       `*NEW ORDER NOTIFICATION - SCENTORY.LK*\n\n` +
@@ -220,13 +233,13 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
       `*Customer Name:* ${placedOrder.customerDetails?.name}\n` +
       `*WhatsApp / Phone:* ${placedOrder.customerDetails?.phone}\n` +
       `*Delivery Address:* ${placedOrder.customerDetails?.address}${placedOrder.customerDetails?.city ? ', ' + placedOrder.customerDetails?.city : ''}\n` +
-      `*Items:* ${itemsList}\n` +
+      `*Purchased Fragrances:*\n${(placedOrder.items || []).map(i => `  • ${i.productName || i.name} (${i.variantSize || 'Standard'}) x${i.quantity || 1} - Rs. ${((i.price || 0) * (i.quantity || 1)).toLocaleString()}`).join('\n')}\n\n` +
       `*Delivery Fee:* Rs. 500\n` +
-      `*Total Amount:* Rs. ${placedOrder.finalTotal?.toLocaleString()}\n` +
+      `*Final Total:* Rs. ${placedOrder.finalTotal?.toLocaleString()}\n` +
       `*Payment Status:* Bank Transfer Receipt Uploaded\n\n` +
-      `_I have placed my order and uploaded the bank slip. Please verify and confirm dispatch. Thank you!_`
+      `_I have placed my order on SCENTORY.LK and uploaded my bank transfer deposit slip. Please verify and confirm dispatch. Thank you!_`
     );
-    const whatsappLink = `https://wa.me/94763151311?text=${whatsappMsg}`;
+    const whatsappLink = `https://wa.me/${storeWa}?text=${whatsappMsg}`;
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-14 text-center animate-in zoom-in-95">
@@ -285,16 +298,20 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
             </div>
           </div>
 
+          {/* Automatic WhatsApp Launch Status Pill */}
+          <div className="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/35 text-emerald-200 text-xs mb-6 max-w-lg mx-auto flex items-center justify-center gap-2.5 shadow-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+            <span>Redirecting to WhatsApp automatically with your order details...</span>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href={whatsappLink}
-              target="_blank"
-              rel="noreferrer"
-              className="py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all"
+              className="py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all"
             >
               <Phone className="w-4 h-4" />
-              <span>Confirm on WhatsApp With Slip</span>
+              <span>Open WhatsApp Chat Now →</span>
             </a>
 
             <button
