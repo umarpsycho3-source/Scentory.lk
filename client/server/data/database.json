@@ -1,0 +1,97 @@
+{
+  "settings": {
+    "storeName": "SCENTORY.LK",
+    "brandSubtitle": "A New Destination for Your Signature Scent",
+    "currency": "LKR",
+    "currencySymbol": "Rs. ",
+    "contactEmail": "orders@scentory.lk",
+    "contactPhone": "0763151311",
+    "whatsappNumber": "0763151311",
+    "instagramHandle": "@scentory.lk",
+    "instagramUrl": "https://www.instagram.com/scentory.lk",
+    "address": "313, Nawalapitiya Road, Ulapane, Sri Lanka",
+    "deliveryFee": 500,
+    "freeDeliveryThreshold": 999999999,
+    "bankDetails": {
+      "bankName": "Commercial Bank of Ceylon",
+      "accountName": "SCENTORY LANKA (PVT) LTD",
+      "accountNumber": "8012398456",
+      "branch": "Kollupitiya Branch (Code: 045)",
+      "swiftCode": "CCEYLKX",
+      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below."
+    },
+    "announcement": "✨ Free Island-wide Delivery on orders above Rs. 12,000 | Authentic Luxury Decants & Flacons"
+  },
+  "users": [
+    {
+      "id": "usr_admin",
+      "name": "Store Administrator",
+      "email": "admin@scentory.lk",
+      "password": "$2b$10$R3UDRWq6O88Tqb.mVKcQLOcQHxtP9ukuGZeyh/jf4rwqNf0LP3JCK",
+      "role": "admin",
+      "phone": "0763151311",
+      "address": "SCENTORY Flagship Studio, Ulapane",
+      "city": "Kandy",
+      "createdAt": "2026-11-24T08:56:42.428Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod_oud_royale",
+      "name": "Oud Royale Impérial",
+      "gender": "Unisex",
+      "scentFamily": "Oriental Woody Oud",
+      "badge": "Signature Masterpiece",
+      "isFeatured": true,
+      "rating": 5,
+      "reviewCount": 0,
+      "description": "Opulent Cambodian agarwood blended with amber, smoky leather, and Turkish damask rose. Sri Lanka signature luxury extrait de parfum.",
+      "images": [
+        "/brand-logo.png"
+      ],
+      "variants": [
+        {
+          "id": "v_5ml",
+          "size": "5ml Pocket Spray",
+          "price": 1950,
+          "discountPrice": 1750,
+          "stock": 50
+        },
+        {
+          "id": "v_10ml",
+          "size": "10ml Travel Atomizer",
+          "price": 3800,
+          "discountPrice": 3400,
+          "stock": 40
+        },
+        {
+          "id": "v_20ml",
+          "size": "20ml Decant Flacon",
+          "price": 7200,
+          "discountPrice": 6500,
+          "stock": 25
+        },
+        {
+          "id": "v_50ml",
+          "size": "50ml Signature Bottle",
+          "price": 16500,
+          "discountPrice": 14900,
+          "stock": 15
+        },
+        {
+          "id": "v_100ml",
+          "size": "100ml Pure Extrait",
+          "price": 28500,
+          "discountPrice": 25900,
+          "stock": 10
+        }
+      ],
+      "createdAt": "2026-11-24T08:56:42.443Z"
+    }
+  ],
+  "orders": [],
+  "reviews": [],
+  "notifications": [],
+  "chatMessages": [],
+  "passwordResetRequests": []
+}
