@@ -162,9 +162,10 @@ router.post('/', authenticateToken, async (req, res) => {
 // GET My Orders (Logged in customer)
 router.get('/my-orders', authenticateToken, async (req, res) => {
   try {
-    const userOrders = db.getUserOrders(req.user.id);
+    const userOrders = db.getUserOrders(req.user.id, req.user.email);
     res.json(userOrders);
   } catch (err) {
+    console.error('Error fetching my-orders:', err);
     res.status(500).json({ message: 'Failed to retrieve your order history.' });
   }
 });
@@ -241,13 +242,8 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req, res) =>
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const existing = db.getOrderById(orderId);
-    if (!existing) {
-      return res.status(404).json({ message: 'Order not found.' });
-    }
-
     const deleted = await db.deleteOrder(orderId);
-    res.json({ message: `Order ${orderId} deleted permanently.`, order: deleted });
+    res.json({ message: `Order ${orderId} deleted permanently.`, deleted: true, order: deleted });
   } catch (err) {
     console.error('Error deleting order:', err);
     res.status(500).json({ message: 'Failed to delete order.' });

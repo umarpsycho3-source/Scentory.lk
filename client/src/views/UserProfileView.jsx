@@ -52,12 +52,12 @@ export default function UserProfileView({ onBackToShop, onSelectProduct, openAut
     }
   }, [user]);
 
-  useEffect(() => {
+  const fetchOrders = () => {
     if (!token) {
       setLoadingOrders(false);
       return;
     }
-
+    setLoadingOrders(true);
     fetch('/api/orders/my-orders', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -67,6 +67,10 @@ export default function UserProfileView({ onBackToShop, onSelectProduct, openAut
       })
       .catch(err => console.error(err))
       .finally(() => setLoadingOrders(false));
+  };
+
+  useEffect(() => {
+    fetchOrders();
   }, [token]);
 
   if (!user) {
@@ -900,12 +904,48 @@ export default function UserProfileView({ onBackToShop, onSelectProduct, openAut
       {/* Slip Modal Lightbox */}
       {selectedSlip && (
         <div
-          onClick={() => setSelectedSlip(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
         >
-          <div className="relative max-w-2xl w-full max-h-[85vh] p-2 glass-panel rounded-2xl border border-[#d4af37]/40 shadow-2xl">
-            <img src={selectedSlip} alt="Bank Slip" className="w-full h-auto max-h-[80vh] object-contain rounded-xl mx-auto" />
-            <p className="text-center text-xs text-gray-400 mt-2">Click anywhere to close slip preview</p>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full max-h-[90vh] p-4 glass-panel rounded-2xl border border-[#d4af37]/40 shadow-2xl space-y-3"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h4 className="font-serif-luxury text-sm font-bold text-white uppercase tracking-wider">
+                Bank Transfer Receipt Preview
+              </h4>
+              <button
+                type="button"
+                onClick={() => setSelectedSlip(null)}
+                className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {selectedSlip.startsWith('data:application/pdf') || selectedSlip.endsWith('.pdf') ? (
+              <div className="space-y-3">
+                <div className="rounded-xl overflow-hidden border border-white/10 h-96 bg-white">
+                  <iframe src={selectedSlip} title="PDF Slip" className="w-full h-full" />
+                </div>
+                <div className="flex justify-end">
+                  <a
+                    href={selectedSlip}
+                    download="Bank_Transfer_Slip.pdf"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-[#d4af37] text-black font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Download / Open Full PDF</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="max-h-[75vh] overflow-hidden rounded-xl bg-black/60 flex items-center justify-center p-2">
+                <img src={selectedSlip} alt="Bank Slip" className="w-full h-auto max-h-[70vh] object-contain rounded-xl mx-auto" />
+              </div>
+            )}
           </div>
         </div>
       )}

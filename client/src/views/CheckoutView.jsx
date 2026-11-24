@@ -59,24 +59,65 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
 
   // Handle bank slip upload to backend
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadError('');
     setUploadingSlip(true);
 
     try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setBankSlipUrl(reader.result);
-        setSlipFile(file);
-        setUploadingSlip(false);
-      };
-      reader.onerror = () => {
-        setUploadError('Failed to read payment slip file.');
-        setUploadingSlip(false);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 1200;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.85);
+            setBankSlipUrl(compressed);
+            setSlipFile(file);
+            setUploadingSlip(false);
+          };
+          img.onerror = () => {
+            setBankSlipUrl(event.target.result);
+            setSlipFile(file);
+            setUploadingSlip(false);
+          };
+          img.src = event.target.result;
+        };
+        reader.onerror = () => {
+          setUploadError('Failed to read payment slip file.');
+          setUploadingSlip(false);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setBankSlipUrl(reader.result);
+          setSlipFile(file);
+          setUploadingSlip(false);
+        };
+        reader.onerror = () => {
+          setUploadError('Failed to read payment slip file.');
+          setUploadingSlip(false);
+        };
+        reader.readAsDataURL(file);
+      }
     } catch (err) {
       setUploadError('Failed to process receipt.');
       setUploadingSlip(false);
@@ -547,16 +588,28 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
                       </div>
 
                       {/* Preview */}
-                      <div className="w-48 h-32 mx-auto rounded-xl overflow-hidden border border-[#d4af37]/30 bg-black/50 shadow-md">
-                        <img
-                          src={bankSlipUrl}
-                          alt="Slip Preview"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      </div>
+                      {bankSlipUrl.startsWith('data:application/pdf') || (slipFile && slipFile.name?.toLowerCase().endsWith('.pdf')) ? (
+                        <div className="p-3 mx-auto max-w-sm rounded-xl bg-[#1c1c28] border border-[#d4af37]/40 flex items-center justify-between gap-3 text-left">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-400 font-bold text-xs uppercase">
+                              PDF
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white truncate max-w-[160px]">{slipFile?.name || 'Bank_Deposit_Slip.pdf'}</p>
+                              <p className="text-[10px] text-gray-400">{slipFile?.size ? `${(slipFile.size / 1024).toFixed(1)} KB` : 'PDF Document'}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] uppercase font-bold text-[#d4af37] border border-[#d4af37]/40 px-2 py-1 rounded-md">Attached</span>
+                        </div>
+                      ) : (
+                        <div className="w-48 h-32 mx-auto rounded-xl overflow-hidden border border-[#d4af37]/30 bg-black/50 shadow-md">
+                          <img
+                            src={bankSlipUrl}
+                            alt="Slip Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
 
                       <p className="text-[11px] text-gray-400">
                         Click or drag to replace receipt slip if needed.

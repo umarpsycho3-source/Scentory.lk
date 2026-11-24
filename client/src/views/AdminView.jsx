@@ -401,28 +401,27 @@ export default function AdminView({ onBackToShop }) {
     }
   };
 
-  // DELETE ORDER (New Feature Requested by Client)
+  // DELETE ORDER
   const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm(`Are you sure you want to permanently DELETE Order #${orderId}? This is typically used to remove fake slips, spam, or cancelled orders and cannot be undone.`)) {
+    if (!window.confirm(`Permanently delete Order #${orderId}? This cannot be undone.`)) {
       return;
     }
 
+    // Immediately remove from local state for instant UI update
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder(null);
+    }
+
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to delete order.');
-
-      if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(null);
-      }
-      setOrders(prev => prev.filter(o => o.id !== orderId));
       loadAdminData();
-      alert(`Order #${orderId} was permanently deleted.`);
     } catch (err) {
-      alert(err.message);
+      console.error('Delete order error:', err);
+      loadAdminData();
     }
   };
 
@@ -1704,66 +1703,127 @@ export default function AdminView({ onBackToShop }) {
                     </div>
 
                     {/* UPLOADED PAYMENT RECEIPT SLIP INSPECTION */}
-                    <div className="p-4 rounded-2xl bg-[#14141e] border border-[#d4af37]/30 space-y-3">
-                      <div className="flex items-center justify-between">
+                    <div className="p-5 rounded-2xl bg-[#14141e] border border-[#d4af37]/30 space-y-4 shadow-lg">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/10">
                         <h4 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
                           <ExternalLink className="w-4 h-4 text-[#d4af37]" />
-                          <span>Uploaded Bank Transfer Deposit Slip</span>
+                          <span>Customer Payment Deposit Slip</span>
                         </h4>
-                        <span className="text-[11px] text-gray-400">
-                          Current Status: <strong className="uppercase text-amber-400">{selectedOrder.paymentStatus}</strong>
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-gray-400">Payment Status:</span>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            selectedOrder.paymentStatus === 'verified'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
+                              : selectedOrder.paymentStatus === 'rejected'
+                              ? 'bg-rose-950 text-rose-400 border border-rose-500/40'
+                              : 'bg-amber-950 text-amber-400 border border-amber-500/40 animate-pulse'
+                          }`}>
+                            {selectedOrder.paymentStatus === 'verified' ? '✓ Verified Payment' : selectedOrder.paymentStatus === 'rejected' ? '✗ Fake / Rejected' : '⏳ Awaiting Review'}
+                          </span>
+                        </div>
                       </div>
 
+                      {/* Slip Rendering (PDF or Image) */}
                       {selectedOrder.bankSlipUrl ? (
-                        <div className="space-y-3">
-                          <div className="max-h-72 overflow-hidden rounded-xl border border-white/10 bg-black/60 flex items-center justify-center p-2">
-                            <img
-                              src={selectedOrder.bankSlipUrl}
-                              alt="Bank Transfer Slip"
-                              className="max-h-64 object-contain rounded-lg cursor-pointer hover:scale-105 transition-transform"
-                              onClick={() => setPreviewSlipUrl(selectedOrder.bankSlipUrl)}
-                            />
+                        selectedOrder.bankSlipUrl.startsWith('data:application/pdf') || selectedOrder.bankSlipUrl.endsWith('.pdf') ? (
+                          <div className="space-y-3">
+                            <div className="p-3.5 rounded-xl bg-[#1c1c28] border border-[#d4af37]/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-rose-950/70 border border-rose-500/40 flex items-center justify-center text-rose-300 font-bold text-xs uppercase">
+                                  PDF
+                                </div>
+                                <div>
+                                  <h5 className="font-semibold text-white text-xs">Official Bank Deposit Slip (PDF)</h5>
+                                  <p className="text-[10px] text-gray-400">Uploaded by customer via checkout</p>
+                                </div>
+                              </div>
+                              <a
+                                href={selectedOrder.bankSlipUrl}
+                                download={`Bank_Slip_${selectedOrder.id}.pdf`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-4 py-2 rounded-xl bg-[#d4af37] text-black font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Open Full PDF Document</span>
+                              </a>
+                            </div>
+                            <div className="rounded-xl overflow-hidden border border-white/10 h-80 bg-white">
+                              <iframe
+                                src={selectedOrder.bankSlipUrl}
+                                title="Bank Slip PDF"
+                                className="w-full h-full"
+                              />
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-gray-400">Click image to enlarge full resolution.</span>
-                            <a
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[#d4af37] underline"
-                            >
-                            </a>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="max-h-80 overflow-hidden rounded-xl border border-white/10 bg-black/60 flex items-center justify-center p-2 relative group">
+                              <img
+                                src={selectedOrder.bankSlipUrl}
+                                alt="Bank Transfer Slip"
+                                className="max-h-72 object-contain rounded-lg cursor-pointer hover:scale-102 transition-transform"
+                                onClick={() => setPreviewSlipUrl(selectedOrder.bankSlipUrl)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewSlipUrl(selectedOrder.bankSlipUrl)}
+                                className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md text-[#d4af37] border border-[#d4af37]/40 text-xs font-semibold flex items-center gap-1.5 shadow-lg cursor-pointer hover:bg-black"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Click to Enlarge</span>
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )
                       ) : (
-                        <p className="text-rose-400 text-xs">No bank slip file found on this order.</p>
+                        <div className="p-6 rounded-xl bg-rose-950/30 border border-rose-500/30 text-center">
+                          <p className="text-rose-400 text-xs font-semibold">No bank slip file attached to this order.</p>
+                        </div>
                       )}
 
-                      {/* Payment Verification Buttons */}
-                      <div className="pt-3 border-t border-white/10 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateOrderStatus(selectedOrder.id, { paymentStatus: 'verified' })}
-                          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            selectedOrder.paymentStatus === 'verified'
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-600 hover:text-white'
-                          }`}
-                        >
-                          ✓ Approve & Verify Payment
-                        </button>
+                      {/* Unified One-Click Verification Controls */}
+                      <div className="pt-3 border-t border-white/10 space-y-3">
+                        <label className="block text-[11px] uppercase tracking-wider text-gray-300 font-bold">
+                          Quick Verification Actions
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateOrderStatus(selectedOrder.id, { paymentStatus: 'verified', orderStatus: 'processing', adminNotes: 'Bank slip verified by Admin.' })}
+                            className={`py-3 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
+                              selectedOrder.paymentStatus === 'verified'
+                                ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                                : 'bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600 hover:text-white'
+                            }`}
+                          >
+                            <span>✓ Approve Payment</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateOrderStatus(selectedOrder.id, { paymentStatus: 'rejected' })}
-                          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            selectedOrder.paymentStatus === 'rejected'
-                              ? 'bg-rose-600 text-white'
-                              : 'bg-rose-950/80 border border-rose-500/50 text-rose-300 hover:bg-rose-600 hover:text-white'
-                          }`}
-                        >
-                          ✕ Reject Slip (Mark as Fake / Unpaid)
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateOrderStatus(selectedOrder.id, { paymentStatus: 'pending_verification', orderStatus: 'placed' })}
+                            className={`py-3 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
+                              selectedOrder.paymentStatus === 'pending_verification'
+                                ? 'bg-amber-600 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                                : 'bg-amber-950/70 border border-amber-500/40 text-amber-300 hover:bg-amber-600 hover:text-white'
+                            }`}
+                          >
+                            <span>⏳ Under Review</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateOrderStatus(selectedOrder.id, { paymentStatus: 'rejected', orderStatus: 'cancelled', adminNotes: 'Bank slip rejected: Fake or invalid.' })}
+                            className={`py-3 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
+                              selectedOrder.paymentStatus === 'rejected'
+                                ? 'bg-rose-600 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]'
+                                : 'bg-rose-950/70 border border-rose-500/40 text-rose-300 hover:bg-rose-600 hover:text-white'
+                            }`}
+                          >
+                            <span>✕ Reject Fake Slip</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 

@@ -99,11 +99,22 @@ class Database {
   }
 
   async ensureConnected() {
-    if (this.connectPromise) {
+    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+    if (!Client || !dbUrl) return;
+
+    if (!this.pgClient) {
+      if (!this.connectPromise) {
+        this.connectPromise = this.connectPg(dbUrl);
+      }
       try { await this.connectPromise; } catch (e) {}
     } else {
-      const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
-      if (Client && dbUrl && !this.pgClient) {
+      try {
+        const res = await this.pgClient.query('SELECT data FROM store_data WHERE id = $1', ['main_store_data']);
+        if (res.rows && res.rows.length > 0 && res.rows[0].data) {
+          this.data = res.rows[0].data;
+        }
+      } catch (err) {
+        this.pgClient = null;
         this.connectPromise = this.connectPg(dbUrl);
         try { await this.connectPromise; } catch (e) {}
       }
@@ -152,9 +163,13 @@ class Database {
 
   async save() {
     try { fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 2), 'utf-8'); } catch (e) {}
+    const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_URL || 'postgresql://postgres.ipvlpxykoyyzketgtybb:Scentary2026@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres';
+    if (!this.pgClient && Client && dbUrl) {
+      try { await this.connectPg(dbUrl); } catch (e) {}
+    }
     if (this.pgClient) {
       try {
-      await (this.pgClient || client).query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
+        await this.pgClient.query('INSERT INTO store_data (id, data, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = NOW();', ['main_store_data', JSON.stringify(this.data)]);
       } catch (err) {
         console.error('Supabase save error:', err.message);
       }
@@ -218,8 +233,24 @@ class Database {
 
   // Orders
   getOrders() { return this.data.orders || []; }
-  getOrderById(id) { return this.getOrders().find(o => o.id === id); }
-  getOrdersByUserId(userId) { return this.getOrders().filter(o => o.userId === userId); }
+  getOrderById(id) {
+    const target = String(id || '').trim().toLowerCase();
+    return this.getOrders().find(o => String(o.id || '').trim().toLowerCase() === target);
+  }
+  getUserOrders(userId, email) {
+    const list = this.getOrders();
+    const cleanId = String(userId || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    return list.filter(o => {
+      if (cleanId && o.userId === cleanId) return true;
+      const oEmail = (o.customerDetails?.email || o.email || '').trim().toLowerCase();
+      if (cleanEmail && oEmail === cleanEmail) return true;
+      return false;
+    });
+  }
+  getOrdersByUserId(userId, email) {
+    return this.getUserOrders(userId, email);
+  }
   async addOrder(orderData) {
     const order = {
       id: 'SCNT-' + Math.floor(1000 + Math.random() * 9000),
@@ -240,7 +271,8 @@ class Database {
     return order;
   }
   async updateOrder(id, updates) {
-    const idx = this.data.orders.findIndex(o => o.id === id);
+    const target = String(id || '').trim().toLowerCase();
+    const idx = this.data.orders.findIndex(o => String(o.id || '').trim().toLowerCase() === target);
     if (idx !== -1) {
       this.data.orders[idx] = { ...this.data.orders[idx], ...updates };
       await this.save();
@@ -249,7 +281,8 @@ class Database {
     return null;
   }
   async deleteOrder(id) {
-    const idx = this.data.orders.findIndex(o => o.id === id);
+    const target = String(id || '').trim().toLowerCase();
+    const idx = this.data.orders.findIndex(o => String(o.id || '').trim().toLowerCase() === target);
     if (idx !== -1) {
       const removed = this.data.orders.splice(idx, 1);
       await this.save();
