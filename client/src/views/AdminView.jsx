@@ -139,33 +139,58 @@ export default function AdminView({ onBackToShop }) {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Fetch admin data
-  const loadAdminData = () => {
+  // Live Auto-Refresh & Auto-Sync State
+  const [autoSyncInterval, setAutoSyncInterval] = useState(() => {
+    return localStorage.getItem('scentory_admin_autosync') || '60'; // Default: every 1 minute
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState(new Date());
+  const [timeAgo, setTimeAgo] = useState('Just now');
+  const [newOrderBanner, setNewOrderBanner] = useState(null);
+  const prevOrdersCountRef = useRef(0);
+  const [autoPageReload10m, setAutoPageReload10m] = useState(() => {
+    return localStorage.getItem('scentory_admin_pagereload') === 'true';
+  });
+
+  // Fetch admin data (silent: background update without full screen spinner)
+  const loadAdminData = (silent = false) => {
     if (!token || !isAdmin) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
+    setIsSyncing(true);
 
     const headers = { 'Authorization': `Bearer ${token}` };
 
     Promise.all([
-      fetch('/api/admin/dashboard-stats', { headers }).then(res => res.json()),
-      fetch('/api/orders', { headers }).then(res => res.json()),
-      fetch('/api/products').then(res => res.json()),
-      fetch('/api/settings').then(res => res.json()),
-      fetch('/api/admin/reports', { headers }).then(res => res.json()),
+      fetch('/api/admin/dashboard-stats', { headers }).then(res => res.json()).catch(() => null),
+      fetch('/api/orders', { headers }).then(res => res.json()).catch(() => []),
+      fetch('/api/products').then(res => res.json()).catch(() => []),
+      fetch('/api/settings').then(res => res.json()).catch(() => null),
+      fetch('/api/admin/reports', { headers }).then(res => res.json()).catch(() => null),
       fetch('/api/notifications', { headers }).then(res => res.json()).catch(() => ({ notifications: [], unreadCount: 0 })),
       fetch('/api/chat/messages', { headers }).then(res => res.json()).catch(() => []),
       fetch('/api/reviews').then(res => res.json()).catch(() => ({ reviews: [] })),
       fetch('/api/admin/users', { headers }).then(res => res.json()).catch(() => [])
     ])
       .then(([statsData, ordersData, prodsData, settingsData, reportsData, notifData, chatData, reviewsData, usersData]) => {
-        setStats(statsData);
-        setOrders(Array.isArray(ordersData) ? ordersData : []);
-        setProducts(Array.isArray(prodsData) ? prodsData : []);
-        setSettings(settingsData);
-        setReports(reportsData);
+        if (statsData) setStats(statsData);
 
-        const notifs = notifData.notifications || [];
-        const unread = notifData.unreadCount || 0;
+        if (Array.isArray(ordersData)) {
+          if (prevOrdersCountRef.current > 0 && ordersData.length > prevOrdersCountRef.current) {
+            const added = ordersData.length - prevOrdersCountRef.current;
+            playNotificationSound();
+            setNewOrderBanner(`${added} new customer order${added > 1 ? 's' : ''} received!`);
+            setTimeout(() => setNewOrderBanner(null), 10000);
+          }
+          prevOrdersCountRef.current = ordersData.length;
+          setOrders(ordersData);
+        }
+
+        if (Array.isArray(prodsData)) setProducts(prodsData);
+        if (settingsData) setSettings(settingsData);
+        if (reportsData) setReports(reportsData);
+
+        const notifs = notifData?.notifications || [];
+        const unread = notifData?.unreadCount || 0;
         setNotifications(notifs);
         setUnreadNotifCount(unread);
 
@@ -174,39 +199,60 @@ export default function AdminView({ onBackToShop }) {
         }
         prevNotifCountRef.current = unread;
 
-        setChatMessages(Array.isArray(chatData) ? chatData : []);
-        setReviewsList(Array.isArray(reviewsData?.reviews) ? reviewsData.reviews : []);
-        setCustomersList(Array.isArray(usersData) ? usersData : []);
+        if (Array.isArray(chatData)) setChatMessages(chatData);
+        if (Array.isArray(reviewsData?.reviews)) setReviewsList(reviewsData.reviews);
+        if (Array.isArray(usersData)) setCustomersList(usersData);
+
+        setLastSyncedTime(new Date());
       })
       .catch(err => console.error('Admin data load error:', err))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+        setIsSyncing(false);
+      });
   };
 
+  // Initial load
   useEffect(() => {
-    loadAdminData();
-    if (token && isAdmin) {
-      const pollTimer = setInterval(() => {
-        const headers = { 'Authorization': `Bearer ${token}` };
-        Promise.all([
-          fetch('/api/notifications', { headers }).then(res => res.json()).catch(() => ({ notifications: [], unreadCount: 0 })),
-          fetch('/api/chat/messages', { headers }).then(res => res.json()).catch(() => []),
-          fetch('/api/orders', { headers }).then(res => res.json()).catch(() => [])
-        ]).then(([notifData, chatData, ordersData]) => {
-          const notifs = notifData.notifications || [];
-          const unread = notifData.unreadCount || 0;
-          if (unread > prevNotifCountRef.current && prevNotifCountRef.current > 0) {
-            playNotificationSound();
-          }
-          prevNotifCountRef.current = unread;
-          setNotifications(notifs);
-          setUnreadNotifCount(unread);
-          if (Array.isArray(chatData)) setChatMessages(chatData);
-          if (Array.isArray(ordersData)) setOrders(ordersData);
-        });
-      }, 8000);
-      return () => clearInterval(pollTimer);
-    }
+    loadAdminData(false);
   }, [token, isAdmin]);
+
+  // Live Auto-Sync periodic polling (configurable interval)
+  useEffect(() => {
+    if (!token || !isAdmin) return;
+    const intervalSec = parseInt(autoSyncInterval, 10);
+    if (!intervalSec || intervalSec <= 0) return;
+
+    const timer = setInterval(() => {
+      loadAdminData(true);
+    }, intervalSec * 1000);
+
+    return () => clearInterval(timer);
+  }, [token, isAdmin, autoSyncInterval]);
+
+  // Relative last sync time ticker
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!lastSyncedTime) return;
+      const diffSec = Math.floor((Date.now() - new Date(lastSyncedTime).getTime()) / 1000);
+      if (diffSec < 10) setTimeAgo('Just now');
+      else if (diffSec < 60) setTimeAgo(`${diffSec}s ago`);
+      else {
+        const mins = Math.floor(diffSec / 60);
+        setTimeAgo(`${mins}m ago`);
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [lastSyncedTime]);
+
+  // Optional: Full Browser Web Page Auto-Reload every 10 minutes (maintains user state via localStorage)
+  useEffect(() => {
+    if (!autoPageReload10m) return;
+    const pageTimer = setInterval(() => {
+      window.location.reload();
+    }, 600000); // 10 minutes = 600,000ms
+    return () => clearInterval(pageTimer);
+  }, [autoPageReload10m]);
 
   const handleMarkAllNotifsRead = async () => {
     try {
@@ -991,6 +1037,55 @@ export default function AdminView({ onBackToShop }) {
         </div>
 
         <div className="flex items-center gap-3 text-xs">
+          {/* Live Auto-Sync / Auto-Refresh Console Pill */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#14141c] border border-[#d4af37]/30 text-gray-300">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${autoSyncInterval !== '0' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+              <span className="text-[11px] font-semibold tracking-wider text-gray-200">
+                {autoSyncInterval !== '0' ? 'LIVE SYNC' : 'MANUAL'}
+              </span>
+            </div>
+            <span className="text-gray-600">|</span>
+            <select
+              value={autoSyncInterval}
+              onChange={(e) => {
+                setAutoSyncInterval(e.target.value);
+                localStorage.setItem('scentory_admin_autosync', e.target.value);
+              }}
+              title="Change Auto-Refresh Frequency"
+              className="bg-black/60 border border-[#d4af37]/40 rounded-lg px-2 py-0.5 text-[11px] text-[#fcf6ba] font-medium focus:outline-none focus:border-[#d4af37] cursor-pointer"
+            >
+              <option value="30" className="bg-[#101016] text-white">Every 30s</option>
+              <option value="60" className="bg-[#101016] text-white">Every 1 min</option>
+              <option value="120" className="bg-[#101016] text-white">Every 2 mins</option>
+              <option value="300" className="bg-[#101016] text-white">Every 5 mins</option>
+              <option value="600" className="bg-[#101016] text-white">Every 10 mins</option>
+              <option value="0" className="bg-[#101016] text-white">Paused (Manual)</option>
+            </select>
+            <span className="text-[10px] text-gray-400 font-mono hidden md:inline">
+              ({timeAgo})
+            </span>
+            <button
+              onClick={() => loadAdminData(true)}
+              disabled={isSyncing}
+              title="Click to fetch newest orders & stats immediately without refreshing browser"
+              className="p-1 rounded-lg bg-[#d4af37]/15 hover:bg-[#d4af37]/30 text-[#fcf6ba] border border-[#d4af37]/40 transition-all cursor-pointer flex items-center gap-1 px-2"
+            >
+              <RefreshCw className={`w-3 h-3 text-[#d4af37] ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="text-[10px] font-bold">Sync Now</span>
+            </button>
+          </div>
+
+          {/* Mobile Refresh Icon */}
+          <button
+            onClick={() => loadAdminData(true)}
+            disabled={isSyncing}
+            title={`Auto-syncing every ${autoSyncInterval}s. Click to refresh now.`}
+            className="sm:hidden p-2 rounded-xl bg-[#14141c] border border-[#d4af37]/40 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/15 transition-all cursor-pointer flex items-center justify-center"
+          >
+            <RefreshCw className={`w-4 h-4 text-[#d4af37] ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+
           {/* Real-time Notification Bell */}
           <div className="relative">
             <button
@@ -1147,6 +1242,26 @@ export default function AdminView({ onBackToShop }) {
           </button>
         </div>
       </div>
+
+      {/* Real-Time Order Toast Alert */}
+      {newOrderBanner && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-amber-500/20 border-b border-[#d4af37]/50 px-6 py-2.5 flex items-center justify-between text-xs text-white z-30 animate-in fade-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="font-bold text-[#fcf6ba] uppercase tracking-wider">🔔 New Order Alert:</span>
+            <span>{newOrderBanner}</span>
+          </div>
+          <button
+            onClick={() => {
+              setActiveTab('orders');
+              setNewOrderBanner(null);
+            }}
+            className="px-3 py-1 rounded-lg bg-[#d4af37] text-black font-bold text-[11px] hover:bg-[#fcf6ba] transition-all cursor-pointer"
+          >
+            View in Orders →
+          </button>
+        </div>
+      )}
 
       {/* Main Container with Sidebar + Content */}
       <div className="flex-1 flex flex-col md:flex-row max-w-[1600px] w-full mx-auto p-4 sm:p-6 gap-6">
@@ -1421,13 +1536,24 @@ export default function AdminView({ onBackToShop }) {
                     Verify uploaded customer deposit slips, reject fake receipts, update delivery status, or delete spam orders.
                   </p>
                 </div>
-                <button
-                  onClick={handleExportCSV}
-                  className="px-4 py-2 rounded-xl bg-[#161622] border border-[#d4af37]/30 hover:border-[#d4af37] text-xs font-semibold text-[#f3e5ab] flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Export CSV Report</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => loadAdminData(true)}
+                    disabled={isSyncing}
+                    title="Silently re-fetch latest orders from Supabase without page reload"
+                    className="px-3.5 py-2 rounded-xl bg-[#161622] border border-[#d4af37]/30 hover:border-[#d4af37] text-xs font-semibold text-[#f3e5ab] flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-[#d4af37] ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>Sync Orders ({timeAgo})</span>
+                  </button>
+                  <button
+                    onClick={handleExportCSV}
+                    className="px-4 py-2 rounded-xl bg-[#161622] border border-[#d4af37]/30 hover:border-[#d4af37] text-xs font-semibold text-[#f3e5ab] flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Export CSV Report</span>
+                  </button>
+                </div>
               </div>
 
               {/* Date Filter & Verified Revenue Metrics Bar */}
@@ -3404,6 +3530,69 @@ export default function AdminView({ onBackToShop }) {
                           </div>
                         </label>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Auto-Refresh & Live Polling Console Settings */}
+                <div className="space-y-4 pt-6 border-t border-[#d4af37]/15">
+                  <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-[#d4af37]" />
+                    <span>Admin Live Auto-Sync & Refresh Settings</span>
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    Control how the Admin Panel checks for incoming customer orders and updates dashboard metrics. Background sync updates data in real-time without reloading the webpage.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-[#14141c] border border-white/10 space-y-2">
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 font-semibold">
+                        Background Order Auto-Sync
+                      </label>
+                      <select
+                        value={autoSyncInterval}
+                        onChange={(e) => {
+                          setAutoSyncInterval(e.target.value);
+                          localStorage.setItem('scentory_admin_autosync', e.target.value);
+                        }}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/10 text-white text-xs outline-none focus:border-[#d4af37] cursor-pointer"
+                      >
+                        <option value="30">Every 30 Seconds (Fastest)</option>
+                        <option value="60">Every 1 Minute (Recommended)</option>
+                        <option value="120">Every 2 Minutes</option>
+                        <option value="300">Every 5 Minutes</option>
+                        <option value="600">Every 10 Minutes</option>
+                        <option value="0">Manual Refresh Only</option>
+                      </select>
+                      <span className="text-[10px] text-gray-500 block">
+                        Pulls latest orders and bank slip verifications directly from Supabase.
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-[#14141c] border border-white/10 space-y-2">
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 font-semibold">
+                        Auto-Reload Browser Page Every 10 Mins
+                      </label>
+                      <div className="flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !autoPageReload10m;
+                            setAutoPageReload10m(next);
+                            localStorage.setItem('scentory_admin_pagereload', next ? 'true' : 'false');
+                          }}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            autoPageReload10m 
+                              ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' 
+                              : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {autoPageReload10m ? '✓ Enabled (Reloads every 10 min)' : '✕ Disabled (Silent Sync Only)'}
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-gray-500 block">
+                        Optional full browser reload mode. Login session is safely preserved in localStorage.
+                      </span>
                     </div>
                   </div>
                 </div>
