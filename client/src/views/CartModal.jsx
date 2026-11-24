@@ -24,8 +24,8 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
         className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity animate-in fade-in"
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-[#0e0e13] border-l border-[#d4af37]/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 max-w-full flex sm:pl-10">
+        <div className="w-full sm:w-[440px] max-w-full bg-[#0e0e13] border-l border-[#d4af37]/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
           {/* Header */}
           <div className="p-6 border-b border-[#d4af37]/20 flex items-center justify-between bg-[#14141a]">
             <div className="flex items-center gap-3">
