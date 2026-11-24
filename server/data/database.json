@@ -36,6 +36,17 @@
   },
   "users": [
     {
+      "id": "usr_ayaan",
+      "name": "Ayaan",
+      "email": "mohamad@gmail.com",
+      "phone": "0771813023",
+      "address": "313, Nawalapitiya road Ulapane",
+      "city": "Kandy",
+      "role": "customer",
+      "password": "$2b$10$23sBX9dmzOL0rGRagbfw3el4C0vggimHAn14/I1MqzYHBskYLxZOu",
+      "createdAt": "2026-11-24T16:55:33.124Z"
+    },
+    {
       "id": "usr_ahamed",
       "city": "Kandy",
       "name": "Ahamed",
