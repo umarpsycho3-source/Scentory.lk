@@ -49,6 +49,10 @@ router.post('/register', async (req, res) => {
 
     await db.addUser(newUser);
 
+    if (!JWT_SECRET) {
+      return res.status(503).json({ message: 'Authentication service temporarily unavailable (JWT_SECRET not configured in Vercel).' });
+    }
+
     const token = jwt.sign({ id: newUser.id, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
@@ -87,6 +91,10 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password.' });
+    }
+
+    if (!JWT_SECRET) {
+      return res.status(503).json({ message: 'Authentication service temporarily unavailable (JWT_SECRET not configured in Vercel).' });
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });

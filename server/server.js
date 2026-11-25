@@ -25,8 +25,18 @@ app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 // Ensure MongoDB Atlas is fully connected and synced before any API request executes in serverless
 const db = require('./db');
 app.use(async (req, res, next) => {
-  if (db && typeof db.ensureConnected === 'function') {
-    await db.ensureConnected();
+  if (req.path.startsWith('/api')) {
+    try {
+      if (db && typeof db.ensureConnected === 'function') {
+        await db.ensureConnected();
+      }
+    } catch (err) {
+      console.error('Database connection error on API request:', err.message);
+      return res.status(503).json({
+        message: 'Database service is currently unavailable. Please verify MONGODB_URI configuration in Vercel.',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    }
   }
   next();
 });

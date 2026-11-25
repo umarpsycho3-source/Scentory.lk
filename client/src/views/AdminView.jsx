@@ -414,6 +414,7 @@ export default function AdminView({ onBackToShop }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to delete customer');
       setCustomersList(prev => prev.filter(c => c.id !== userId));
+      loadAdminData();
       alert(data.message);
     } catch (err) {
       alert(err.message);

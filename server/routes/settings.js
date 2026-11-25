@@ -26,11 +26,15 @@ router.put('/', authenticateToken, requireAdmin, async (req, res) => {
         const matches = updates.heroVideoUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (matches && matches[2]) {
           const buffer = Buffer.from(matches[2], 'base64');
-          const publicPath = path.join(__dirname, '..', '..', 'client', 'public', 'hero-uploaded-video.mp4');
-          const serverPath = path.join(__dirname, '..', 'uploads', 'hero-uploaded-video.mp4');
-          fs.writeFileSync(publicPath, buffer);
-          try { fs.writeFileSync(serverPath, buffer); } catch (e) {}
-          updates.heroVideoUrl = '/hero-uploaded-video.mp4';
+          try {
+            const publicPath = path.join(__dirname, '..', '..', 'client', 'public', 'hero-uploaded-video.mp4');
+            const serverPath = path.join(__dirname, '..', 'uploads', 'hero-uploaded-video.mp4');
+            fs.writeFileSync(publicPath, buffer);
+            fs.writeFileSync(serverPath, buffer);
+            updates.heroVideoUrl = '/hero-uploaded-video.mp4';
+          } catch (writeErr) {
+            console.warn('Serverless filesystem is read-only; retaining video reference');
+          }
         }
       } catch (e) {
         console.error('Failed to convert base64 video to file:', e);

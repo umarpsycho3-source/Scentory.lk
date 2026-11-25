@@ -75,9 +75,18 @@ router.post('/', authenticateToken, async (req, res) => {
     } = req.body;
 
     // Validate customer details
-    if (!customerDetails || !customerDetails.name || !customerDetails.phone || !customerDetails.address) {
+    if (!customerDetails || !customerDetails.name?.trim() || !customerDetails.phone?.trim() || !customerDetails.address?.trim()) {
       return res.status(400).json({
-        message: 'Please complete all customer details: Name, WhatsApp number, and Delivery / Pick Up address.'
+        message: 'Please complete all customer details: Full Name, WhatsApp phone number, and Delivery / Pick Up address.'
+      });
+    }
+
+    // Sri Lanka phone validation
+    const cleanPhone = customerDetails.phone.trim().replace(/[\s\-()]/g, '');
+    const slPhoneRegex = /^(?:0|94|\+94)?(7[0-9]{8})$/;
+    if (!slPhoneRegex.test(cleanPhone)) {
+      return res.status(400).json({
+        message: 'Please enter a valid 10-digit Sri Lankan phone/WhatsApp number (e.g. 0771234567 or +94771234567).'
       });
     }
 
@@ -87,7 +96,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // MANDATORY REQUIREMENT: Bank slip must be uploaded
-    if (!bankSlipUrl) {
+    if (!bankSlipUrl || typeof bankSlipUrl !== 'string' || !bankSlipUrl.trim()) {
       return res.status(400).json({
         message: 'Payment slip is required. Please upload the bank transfer receipt/screenshot to proceed.'
       });
@@ -95,36 +104,76 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const settings = db.getSettings();
 
-    // Calculate subtotal
+    // SERVER-AUTHORITATIVE Price and Stock Validation (Never trust prices sent from browser)
     let subtotal = 0;
-    const validatedItems = items.map(item => {
-      const lineTotal = Number(item.price) * Number(item.quantity);
+    const validatedItems = [];
+
+    for (const item of items) {
+      if (!item.productId) {
+        return res.status(400).json({ message: 'Invalid item: missing product identifier.' });
+      }
+
+      const product = db.getProductById(item.productId);
+      if (!product) {
+        return res.status(400).json({ message: `Product "${item.productName || item.productId}" is no longer available in store.` });
+      }
+
+      const variants = product.variants || [];
+      const variant = variants.find(v => v.id === item.variantId || v.size === item.variantSize);
+      if (!variant) {
+        return res.status(400).json({ message: `Selected variant for "${product.name}" is no longer available.` });
+      }
+
+      const quantity = parseInt(item.quantity, 10);
+      if (isNaN(quantity) || quantity <= 0) {
+        return res.status(400).json({ message: `Invalid quantity for "${product.name}". Must be at least 1.` });
+      }
+
+      if ((Number(variant.stock) || 0) < quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for "${product.name} - ${variant.size}". Available: ${variant.stock}, requested: ${quantity}.`
+        });
+      }
+
+      // Authoritative unit price directly from database
+      const unitPrice = variant.discountPrice !== undefined && variant.discountPrice !== null && Number(variant.discountPrice) > 0
+        ? Number(variant.discountPrice)
+        : Number(variant.price);
+
+      const lineTotal = unitPrice * quantity;
       subtotal += lineTotal;
-      return {
-        productId: item.productId,
-        productName: item.productName,
-        image: item.image,
-        variantId: item.variantId,
-        variantSize: item.variantSize,
-        price: Number(item.price),
-        quantity: Number(item.quantity),
+
+      validatedItems.push({
+        productId: product.id,
+        productName: product.name,
+        image: product.images?.[0] || item.image || '/brand-logo.png',
+        variantId: variant.id,
+        variantSize: variant.size,
+        sku: variant.sku || '',
+        price: unitPrice,
+        quantity: quantity,
         subtotal: lineTotal
-      };
-    });
+      });
+    }
 
     const isPickup = fulfillmentType === 'pickup';
-    const deliveryFee = isPickup ? 0 : (settings.deliveryFee !== undefined ? Number(settings.deliveryFee) : 500);
+    const freeThreshold = Number(settings.freeShippingThreshold || settings.freeDeliveryThreshold || 999999999);
+    const standardFee = Number(settings.deliveryFee || settings.shippingFee || 500);
+    const deliveryFee = isPickup ? 0 : (subtotal >= freeThreshold ? 0 : standardFee);
     const finalTotal = subtotal + deliveryFee;
 
-    const orderId = 'SCNT-' + Math.floor(1000 + Math.random() * 9000);
+    // Collision-resistant unique Order ID (e.g. SCNT-K8Z2-3F9A)
+    const timeCode = Date.now().toString(36).toUpperCase().slice(-4);
+    const randCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const orderId = `SCNT-${timeCode}-${randCode}`;
 
     const newOrder = {
       id: orderId,
       userId: req.user.id,
       customerDetails: {
         name: customerDetails.name.trim(),
-        email: (customerDetails.email || req.user.email).trim(),
-        phone: customerDetails.phone.trim(), // WhatsApp number
+        email: (customerDetails.email || req.user.email).trim().toLowerCase(),
+        phone: cleanPhone,
         address: customerDetails.address.trim(),
         city: (customerDetails.city || '').trim(),
         postalCode: (customerDetails.postalCode || '').trim(),
@@ -139,11 +188,12 @@ router.post('/', authenticateToken, async (req, res) => {
       bankSlipUrl: bankSlipUrl.trim(),
       paymentStatus: 'pending_verification',
       orderStatus: 'placed',
+      stockDeducted: false,
       bankDetailsSnap: settings.bankDetails || {
         bankName: 'Commercial Bank of Ceylon',
-        accountName: 'SCENTORY LANKA (PVT) LTD',
-        accountNumber: '8012398456',
-        branch: 'Kollupitiya Branch'
+        accountName: 'SCENTORY LUXURY PARFUMS (PVT) LTD',
+        accountNumber: '8012345678',
+        branch: 'Colombo 07 Branch'
       },
       adminNotes: '',
       createdAt: new Date().toISOString()
@@ -168,7 +218,7 @@ router.post('/', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating order:', err);
-    res.status(500).json({ message: 'Order submission failed.' });
+    res.status(500).json({ message: 'Failed to place order: ' + err.message });
   }
 });
 
@@ -239,31 +289,61 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req, res) =>
       return res.status(404).json({ message: 'Order not found.' });
     }
 
+    const ALLOWED_PAYMENT_STATUSES = ['pending_verification', 'verified', 'rejected', 'refunded'];
+    const ALLOWED_ORDER_STATUSES = ['placed', 'processing', 'dispatched', 'delivered', 'cancelled'];
+
+    if (paymentStatus && !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
+      return res.status(400).json({ message: `Invalid payment status "${paymentStatus}". Allowed: ${ALLOWED_PAYMENT_STATUSES.join(', ')}` });
+    }
+    if (orderStatus && !ALLOWED_ORDER_STATUSES.includes(orderStatus)) {
+      return res.status(400).json({ message: `Invalid order status "${orderStatus}". Allowed: ${ALLOWED_ORDER_STATUSES.join(', ')}` });
+    }
+
     const updates = {};
     if (orderStatus) updates.orderStatus = orderStatus;
+    if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+
     if (paymentStatus) {
       updates.paymentStatus = paymentStatus;
-      // Auto-decrement inventory stock and increment sales count when verified
-      if (paymentStatus === 'verified' && existing.paymentStatus !== 'verified') {
+
+      // Idempotent inventory deduction: only deduct if transitioning to verified and not previously deducted
+      if (paymentStatus === 'verified' && !existing.stockDeducted) {
         for (const item of (existing.items || [])) {
           const product = db.getProductById(item.productId);
           if (product && Array.isArray(product.variants)) {
             const vIdx = product.variants.findIndex(v => v.id === item.variantId || v.size === item.variantSize);
             if (vIdx !== -1) {
-              product.variants[vIdx].stock = Math.max(0, (Number(product.variants[vIdx].stock) || 0) - (Number(item.quantity) || 1));
+              const currentStock = Number(product.variants[vIdx].stock) || 0;
+              const qty = Number(item.quantity) || 1;
+              product.variants[vIdx].stock = Math.max(0, currentStock - qty);
+              await db.updateProduct(product.id, { variants: product.variants });
             }
-            product.salesCount = (Number(product.salesCount) || 0) + (Number(item.quantity) || 1);
-            await db.updateProduct(product.id, { variants: product.variants, salesCount: product.salesCount });
           }
         }
+        updates.stockDeducted = true;
+      } else if (paymentStatus !== 'verified' && existing.stockDeducted) {
+        // Payment status reversed, rejected, or refunded: restore inventory
+        for (const item of (existing.items || [])) {
+          const product = db.getProductById(item.productId);
+          if (product && Array.isArray(product.variants)) {
+            const vIdx = product.variants.findIndex(v => v.id === item.variantId || v.size === item.variantSize);
+            if (vIdx !== -1) {
+              const currentStock = Number(product.variants[vIdx].stock) || 0;
+              const qty = Number(item.quantity) || 1;
+              product.variants[vIdx].stock = currentStock + qty;
+              await db.updateProduct(product.id, { variants: product.variants });
+            }
+          }
+        }
+        updates.stockDeducted = false;
       }
     }
-    if (adminNotes !== undefined) updates.adminNotes = adminNotes;
 
     const updated = await db.updateOrder(req.params.id, updates);
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to update order status.' });
+    console.error('Error updating order status:', err);
+    res.status(500).json({ message: 'Failed to update order status: ' + err.message });
   }
 });
 
@@ -271,11 +351,32 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req, res) =>
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
+    const existing = db.getOrderById(orderId);
+    if (!existing) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    // If stock was already deducted for this order, restore stock before deleting
+    if (existing.stockDeducted && Array.isArray(existing.items)) {
+      for (const item of existing.items) {
+        const product = db.getProductById(item.productId);
+        if (product && Array.isArray(product.variants)) {
+          const vIdx = product.variants.findIndex(v => v.id === item.variantId || v.size === item.variantSize);
+          if (vIdx !== -1) {
+            const currentStock = Number(product.variants[vIdx].stock) || 0;
+            const qty = Number(item.quantity) || 1;
+            product.variants[vIdx].stock = currentStock + qty;
+            await db.updateProduct(product.id, { variants: product.variants });
+          }
+        }
+      }
+    }
+
     const deleted = await db.deleteOrder(orderId);
     res.json({ message: `Order ${orderId} deleted permanently.`, deleted: true, order: deleted });
   } catch (err) {
     console.error('Error deleting order:', err);
-    res.status(500).json({ message: 'Failed to delete order.' });
+    res.status(500).json({ message: 'Failed to delete order: ' + err.message });
   }
 });
 

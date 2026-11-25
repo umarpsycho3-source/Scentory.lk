@@ -1,8 +1,13 @@
+require('dotenv').config();
 const { MongoClient } = require("mongodb");
 const fs = require("fs");
 const path = require("path");
 
-const MONGO_URI = "mongodb+srv://scentory10_db_user:Scentory2026@cluster0.gg2kvzg.mongodb.net/scentory?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI) {
+  console.error("FAIL: MONGODB_URI environment variable is required.");
+  process.exit(1);
+}
 const DB_PATH = path.join(__dirname, "server", "data", "database.json");
 
 async function seed() {

@@ -147,8 +147,10 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
       return;
     }
 
-    if (!phone || !phone.trim() || phone.replace(/[^0-9]/g, '').length < 9) {
-      setOrderError('Please enter a valid WhatsApp contact number (e.g. 0771234567).');
+    const cleanPhone = (phone || '').trim().replace(/[\s\-()]/g, '');
+    const slPhoneRegex = /^(?:0|94|\+94)?(7[0-9]{8})$/;
+    if (!slPhoneRegex.test(cleanPhone)) {
+      setOrderError('Please enter a valid 10-digit Sri Lankan WhatsApp contact number (e.g. 0771234567 or +94771234567).');
       return;
     }
 

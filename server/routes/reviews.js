@@ -83,19 +83,50 @@ router.post('/', async (req, res) => {
   try {
     const { customerName, rating, productName, comment, location, image } = req.body;
 
-    if (!customerName || !rating || !comment) {
-      return res.status(400).json({ message: 'Customer name, star rating, and review comments are required.' });
+    if (!customerName || !customerName.trim()) {
+      return res.status(400).json({ message: 'Customer name is required.' });
+    }
+
+    const numRating = Number(rating);
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ message: 'Rating must be an integer between 1 and 5 stars.' });
+    }
+
+    if (!comment || comment.trim().length < 5) {
+      return res.status(400).json({ message: 'Review comment must be at least 5 characters long.' });
+    }
+
+    // Check optional authentication token from header to set verifiedBuyer accurately
+    let isVerified = false;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      try {
+        const { getJwtSecret } = require('../middleware/auth');
+        const jwt = require('jsonwebtoken');
+        const secret = getJwtSecret();
+        if (secret) {
+          const payload = jwt.verify(token, secret);
+          if (payload && payload.id) {
+            // Check if user has at least one verified order
+            const userOrders = db.getUserOrders(payload.id);
+            if (userOrders.some(o => o.paymentStatus === 'verified')) {
+              isVerified = true;
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     const newReview = {
       id: 'rev_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
       customerName: customerName.trim(),
-      rating: Math.max(1, Math.min(5, Number(rating))),
+      rating: Math.round(numRating),
       productName: productName ? productName.trim() : 'Signature Extrait Flacon',
       comment: comment.trim(),
       location: location ? location.trim() : 'Sri Lanka',
       image: image ? image.trim() : null,
-      verifiedBuyer: true,
+      verifiedBuyer: isVerified,
       createdAt: new Date().toISOString()
     };
 
@@ -103,7 +134,7 @@ router.post('/', async (req, res) => {
     res.status(201).json({ message: 'Review submitted successfully!', review: newReview });
   } catch (err) {
     console.error('Error submitting review:', err);
-    res.status(500).json({ message: 'Failed to submit review.' });
+    res.status(500).json({ message: 'Failed to submit review: ' + err.message });
   }
 });
 

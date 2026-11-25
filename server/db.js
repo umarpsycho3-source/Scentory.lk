@@ -1,3 +1,4 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -12,12 +13,8 @@ try {
   }
 } catch (e) {}
 
-let MONGO_URI = process.env.MONGODB_URI;
-if (!MONGO_URI && process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('mongodb://') || process.env.DATABASE_URL.startsWith('mongodb+srv://'))) {
-  MONGO_URI = process.env.DATABASE_URL;
-}
-if (!MONGO_URI) {
-  MONGO_URI = 'mongodb+srv://scentory10_db_user:Scentory2026@cluster0.gg2kvzg.mongodb.net/scentory?retryWrites=true&w=majority';
+function getMongoUri() {
+  return process.env.MONGODB_URI || process.env.DATABASE_URL || null;
 }
 
 function getInitialData() {
@@ -118,19 +115,32 @@ class Database {
   }
 
   initMongo() {
+    const uri = getMongoUri();
+    if (!uri) {
+      console.warn('⚠️ [SCENTORY SECURITY WARNING] MONGODB_URI is not configured.');
+      return;
+    }
     try {
-      this.client = new MongoClient(MONGO_URI, {
+      this.client = new MongoClient(uri, {
         serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 10000
+        connectTimeoutMS: 10000,
+        maxPoolSize: 10
       });
       this.connectPromise = this.client.connect().then(async (c) => {
         this.mongoDb = c.db('scentory');
+        try {
+          await this.mongoDb.collection('store_users').createIndex({ email: 1 }, { unique: true, sparse: true });
+          await this.mongoDb.collection('store_orders').createIndex({ id: 1 }, { unique: true, sparse: true });
+        } catch (idxErr) {}
         await this.syncFromMongo();
       }).catch(err => {
         console.error('MongoDB Atlas connect error:', err.message);
+        this.mongoDb = null;
+        throw err;
       });
     } catch (err) {
       console.error('Failed to initialize MongoClient:', err.message);
+      throw err;
     }
   }
 
@@ -240,15 +250,21 @@ class Database {
   }
 
   async ensureConnected() {
+    const uri = getMongoUri();
+    if (!uri) {
+      throw new Error('Database service unavailable: MONGODB_URI is not configured.');
+    }
     if (!this.mongoDb) {
       this.initMongo();
     }
-    if (this.lastSyncTime === 0 && this.connectPromise) {
-      try {
-        await this.connectPromise;
-      } catch (e) {}
-    } else if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
-      this.syncFromMongo().catch(() => {});
+    if (this.connectPromise) {
+      await this.connectPromise;
+    }
+    if (!this.mongoDb) {
+      throw new Error('Failed to establish connection to MongoDB Atlas.');
+    }
+    if (Date.now() - this.lastSyncTime > 5000 && !this.isSyncing) {
+      await this.syncFromMongo();
     }
   }
 
@@ -258,20 +274,17 @@ class Database {
   }
 
   async updateSettings(updates) {
-    this.data.settings = { ...this.data.settings, ...updates, updatedAt: new Date().toISOString() };
-    await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_settings').updateOne(
-          { _id: 'general' },
-          { $set: this.data.settings },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving settings to MongoDB:', err.message);
-      }
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for settings update.');
     }
+    this.data.settings = { ...this.data.settings, ...updates, updatedAt: new Date().toISOString() };
+    await this.mongoDb.collection('store_settings').updateOne(
+      { _id: 'general' },
+      { $set: this.data.settings },
+      { upsert: true }
+    );
+    await this.save();
     return this.data.settings;
   }
 
@@ -281,7 +294,7 @@ class Database {
   }
 
   getUserById(id) {
-    return this.getUsers().find(u => u.id === id);
+    return this.getUsers().find(u => u.id === id || u._id === id);
   }
 
   getUserByEmail(email) {
@@ -291,6 +304,15 @@ class Database {
   }
 
   async addUser(user) {
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for user registration.');
+    }
+    await this.mongoDb.collection('store_users').updateOne(
+      { _id: user.id },
+      { $set: user },
+      { upsert: true }
+    );
     const existingIdx = this.data.users.findIndex(u => (u.email || '').toLowerCase() === (user.email || '').toLowerCase());
     if (existingIdx !== -1) {
       this.data.users[existingIdx] = user;
@@ -298,58 +320,41 @@ class Database {
       this.data.users.unshift(user);
     }
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_users').updateOne(
-          { _id: user.id },
-          { $set: user },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving user to MongoDB:', err.message);
-      }
-    }
     return user;
   }
 
   async updateUser(id, updates) {
-    const idx = this.data.users.findIndex(u => u.id === id);
-    if (idx !== -1) {
-      this.data.users[idx] = { ...this.data.users[idx], ...updates, updatedAt: new Date().toISOString() };
-      const updatedUser = this.data.users[idx];
-      await this.save();
-
-      if (this.mongoDb) {
-        try {
-          await this.mongoDb.collection('store_users').updateOne(
-            { _id: id },
-            { $set: updatedUser }
-          );
-        } catch (err) {
-          console.error('Error updating user in MongoDB:', err.message);
-        }
-      }
-      return updatedUser;
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for user update.');
     }
-    return null;
+    const idx = this.data.users.findIndex(u => u.id === id || u._id === id);
+    const existing = idx !== -1 ? this.data.users[idx] : {};
+    const updatedUser = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    await this.mongoDb.collection('store_users').updateOne(
+      { $or: [{ _id: id }, { id: id }] },
+      { $set: updatedUser }
+    );
+    if (idx !== -1) {
+      this.data.users[idx] = updatedUser;
+    }
+    await this.save();
+    return updatedUser;
   }
 
   async deleteUser(id) {
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for customer deletion.');
+    }
     const user = this.data.users.find(u => u.id === id || u._id === id);
     const email = user?.email;
+    const orClauses = [{ _id: id }, { id: id }];
+    if (email) orClauses.push({ email: email });
+
+    await this.mongoDb.collection('store_users').deleteMany({ $or: orClauses });
     this.data.users = this.data.users.filter(u => u.id !== id && u._id !== id && (!email || u.email !== email));
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        const orClauses = [{ _id: id }, { id: id }];
-        if (email) orClauses.push({ email: email });
-        await this.mongoDb.collection('store_users').deleteMany({ $or: orClauses });
-      } catch (err) {
-        console.error('Error deleting user from MongoDB:', err.message);
-      }
-    }
     return user || { id, deleted: true };
   }
 
@@ -359,63 +364,56 @@ class Database {
   }
 
   getProductById(id) {
-    return this.getProducts().find(p => p.id === id);
+    return this.getProducts().find(p => p.id === id || p._id === id);
   }
 
   async addProduct(product) {
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for product creation.');
+    }
+    await this.mongoDb.collection('store_products').updateOne(
+      { _id: product.id },
+      { $set: product },
+      { upsert: true }
+    );
     this.data.products.unshift(product);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_products').updateOne(
-          { _id: product.id },
-          { $set: product },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving product to MongoDB:', err.message);
-      }
-    }
     return product;
   }
 
   async updateProduct(id, updates) {
-    const idx = this.data.products.findIndex(p => p.id === id);
-    if (idx !== -1) {
-      this.data.products[idx] = { ...this.data.products[idx], ...updates, updatedAt: new Date().toISOString() };
-      const updatedProd = this.data.products[idx];
-      await this.save();
-
-      if (this.mongoDb) {
-        try {
-          await this.mongoDb.collection('store_products').updateOne(
-            { _id: id },
-            { $set: updatedProd }
-          );
-        } catch (err) {
-          console.error('Error updating product in MongoDB:', err.message);
-        }
-      }
-      return updatedProd;
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for product update.');
     }
-    return null;
+    const idx = this.data.products.findIndex(p => p.id === id || p._id === id);
+    const existing = idx !== -1 ? this.data.products[idx] : {};
+    const updatedProd = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    await this.mongoDb.collection('store_products').updateOne(
+      { $or: [{ _id: id }, { id: id }] },
+      { $set: updatedProd }
+    );
+    if (idx !== -1) {
+      this.data.products[idx] = updatedProd;
+    } else {
+      this.data.products.unshift(updatedProd);
+    }
+    await this.save();
+    return updatedProd;
   }
 
   async deleteProduct(id) {
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for product deletion.');
+    }
     const product = this.data.products.find(p => p.id === id || p._id === id);
+    await this.mongoDb.collection('store_products').deleteMany({
+      $or: [{ _id: id }, { id: id }]
+    });
     this.data.products = this.data.products.filter(p => p.id !== id && p._id !== id);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_products').deleteMany({
-          $or: [{ _id: id }, { id: id }]
-        });
-      } catch (err) {
-        console.error('Error deleting product from MongoDB:', err.message);
-      }
-    }
     return product || { id, deleted: true };
   }
 
@@ -425,7 +423,7 @@ class Database {
   }
 
   getOrderById(id) {
-    return this.getOrders().find(o => o.id === id);
+    return this.getOrders().find(o => o.id === id || o._id === id);
   }
 
   getUserOrders(userId, userEmail) {
@@ -442,60 +440,51 @@ class Database {
   }
 
   async addOrder(order) {
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for order placement.');
+    }
+    await this.mongoDb.collection('store_orders').updateOne(
+      { _id: order.id },
+      { $set: order },
+      { upsert: true }
+    );
     this.data.orders.unshift(order);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_orders').updateOne(
-          { _id: order.id },
-          { $set: order },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving order to MongoDB:', err.message);
-      }
-    }
     return order;
   }
 
   async updateOrder(id, updates) {
-    const idx = this.data.orders.findIndex(o => o.id === id);
-    if (idx !== -1) {
-      this.data.orders[idx] = { ...this.data.orders[idx], ...updates, updatedAt: new Date().toISOString() };
-      const updatedOrder = this.data.orders[idx];
-      await this.save();
-
-      if (this.mongoDb) {
-        try {
-          await this.mongoDb.collection('store_orders').updateOne(
-            { _id: id },
-            { $set: updatedOrder }
-          );
-        } catch (err) {
-          console.error('Error updating order in MongoDB:', err.message);
-        }
-      }
-      return updatedOrder;
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for order update.');
     }
-    return null;
+    const idx = this.data.orders.findIndex(o => o.id === id || o._id === id);
+    const existing = idx !== -1 ? this.data.orders[idx] : {};
+    const updatedOrder = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    await this.mongoDb.collection('store_orders').updateOne(
+      { $or: [{ _id: id }, { id: id }] },
+      { $set: updatedOrder }
+    );
+    if (idx !== -1) {
+      this.data.orders[idx] = updatedOrder;
+    }
+    await this.save();
+    return updatedOrder;
   }
 
   async deleteOrder(id) {
-    const idx = this.data.orders.findIndex(o => o.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.orders.splice(idx, 1)[0];
-      await this.save();
+    await this.ensureConnected();
+    if (!this.mongoDb) {
+      throw new Error('Database service unavailable for order deletion.');
     }
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_orders').deleteOne({ _id: id });
-      } catch (err) {
-        console.error('Error deleting order from MongoDB:', err.message);
-      }
-    }
-    return removed || { id, deleted: true };
+    const idx = this.data.orders.findIndex(o => o.id === id || o._id === id);
+    const order = idx !== -1 ? this.data.orders.splice(idx, 1)[0] : null;
+    await this.mongoDb.collection('store_orders').deleteMany({
+      $or: [{ _id: id }, { id: id }]
+    });
+    await this.save();
+    return order || { id, deleted: true };
   }
 
   // ==================== REVIEWS ====================
@@ -504,37 +493,27 @@ class Database {
   }
 
   async addReview(review) {
+    await this.ensureConnected();
+    if (!this.mongoDb) throw new Error('Database service unavailable for adding review.');
+    await this.mongoDb.collection('store_reviews').updateOne(
+      { _id: review.id },
+      { $set: review },
+      { upsert: true }
+    );
     this.data.reviews.unshift(review);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_reviews').updateOne(
-          { _id: review.id },
-          { $set: review },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving review to MongoDB:', err.message);
-      }
-    }
     return review;
   }
 
   async deleteReview(id) {
-    const idx = this.data.reviews.findIndex(r => r.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.reviews.splice(idx, 1)[0];
-      await this.save();
-    }
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_reviews').deleteOne({ _id: id });
-      } catch (err) {
-        console.error('Error deleting review from MongoDB:', err.message);
-      }
-    }
+    await this.ensureConnected();
+    if (!this.mongoDb) throw new Error('Database service unavailable for deleting review.');
+    const idx = this.data.reviews.findIndex(r => r.id === id || r._id === id);
+    const removed = idx !== -1 ? this.data.reviews.splice(idx, 1)[0] : null;
+    await this.mongoDb.collection('store_reviews').deleteMany({
+      $or: [{ _id: id }, { id: id }]
+    });
+    await this.save();
     return removed || { id, deleted: true };
   }
 
@@ -544,75 +523,65 @@ class Database {
   }
 
   async addNotification(notif) {
+    await this.ensureConnected();
+    if (this.mongoDb) {
+      await this.mongoDb.collection('store_notifications').updateOne(
+        { _id: notif.id },
+        { $set: notif },
+        { upsert: true }
+      );
+    }
     this.data.notifications.unshift(notif);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_notifications').updateOne(
-          { _id: notif.id },
-          { $set: notif },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving notification to MongoDB:', err.message);
-      }
-    }
     return notif;
   }
 
   async markAllNotificationsRead() {
+    await this.ensureConnected();
+    if (this.mongoDb) {
+      await this.mongoDb.collection('store_notifications').updateMany({}, { $set: { isRead: true } });
+    }
     this.data.notifications.forEach(n => { n.isRead = true; });
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_notifications').updateMany({}, { $set: { isRead: true } });
-      } catch (err) {
-        console.error('Error marking notifications read in MongoDB:', err.message);
-      }
-    }
     return this.data.notifications;
   }
 
   async markNotificationRead(id) {
-    const n = this.data.notifications.find(item => item.id === id);
+    await this.ensureConnected();
+    const n = this.data.notifications.find(item => item.id === id || item._id === id);
     if (n) {
       n.isRead = true;
-      await this.save();
       if (this.mongoDb) {
-        try {
-          await this.mongoDb.collection('store_notifications').updateOne({ _id: id }, { $set: { isRead: true } });
-        } catch (err) {}
+        await this.mongoDb.collection('store_notifications').updateOne(
+          { $or: [{ _id: id }, { id: id }] },
+          { $set: { isRead: true } }
+        );
       }
+      await this.save();
     }
     return n;
   }
 
   async clearAllNotifications() {
+    await this.ensureConnected();
+    if (this.mongoDb) {
+      await this.mongoDb.collection('store_notifications').deleteMany({});
+    }
     this.data.notifications = [];
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_notifications').deleteMany({});
-      } catch (err) {}
-    }
     return [];
   }
 
   async deleteNotification(id) {
-    const idx = this.data.notifications.findIndex(n => n.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.notifications.splice(idx, 1)[0];
-      await this.save();
-    }
+    await this.ensureConnected();
+    const idx = this.data.notifications.findIndex(n => n.id === id || n._id === id);
+    const removed = idx !== -1 ? this.data.notifications.splice(idx, 1)[0] : null;
     if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_notifications').deleteOne({ _id: id });
-      } catch (err) {}
+      await this.mongoDb.collection('store_notifications').deleteMany({
+        $or: [{ _id: id }, { id: id }]
+      });
     }
+    await this.save();
     return removed;
   }
 
@@ -622,35 +591,29 @@ class Database {
   }
 
   async addChatMessage(msg) {
+    await this.ensureConnected();
+    if (this.mongoDb) {
+      await this.mongoDb.collection('store_chat').updateOne(
+        { _id: msg.id },
+        { $set: msg },
+        { upsert: true }
+      );
+    }
     this.data.chatMessages.push(msg);
     await this.save();
-
-    if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_chat').updateOne(
-          { _id: msg.id },
-          { $set: msg },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.error('Error saving chat message to MongoDB:', err.message);
-      }
-    }
     return msg;
   }
 
   async deleteChatMessage(id) {
-    const idx = this.data.chatMessages.findIndex(m => m.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.chatMessages.splice(idx, 1)[0];
-      await this.save();
-    }
+    await this.ensureConnected();
+    const idx = this.data.chatMessages.findIndex(m => m.id === id || m._id === id);
+    const removed = idx !== -1 ? this.data.chatMessages.splice(idx, 1)[0] : null;
     if (this.mongoDb) {
-      try {
-        await this.mongoDb.collection('store_chat').deleteOne({ _id: id });
-      } catch (err) {}
+      await this.mongoDb.collection('store_chat').deleteMany({
+        $or: [{ _id: id }, { id: id }]
+      });
     }
+    await this.save();
     return removed;
   }
 

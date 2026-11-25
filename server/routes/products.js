@@ -162,23 +162,59 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       variants
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Product title is required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Product title is required and cannot be empty.' });
     }
 
     if (!variants || !Array.isArray(variants) || variants.length === 0) {
-      return res.status(400).json({ message: 'At least one bottle size variant (e.g. 5ml, 10ml, 50ml) is required.' });
+      return res.status(400).json({ message: 'At least one bottle size variant (e.g. 10ml, 20ml, 50ml, 100ml) is required.' });
     }
 
-    // Format variants with unique ids
-    const formattedVariants = variants.map((v, idx) => ({
-      id: v.id || `var_${Date.now()}_${idx}`,
-      size: v.size || '10ml Spray',
-      price: Number(v.price) || 0,
-      discountPrice: v.discountPrice ? Number(v.discountPrice) : null,
-      stock: v.stock !== undefined ? Number(v.stock) : 20,
-      sku: v.sku || `SKU-${Date.now().toString(36).toUpperCase()}-${idx}`
-    }));
+    // Format & validate variants
+    const seenSizes = new Set();
+    const formattedVariants = [];
+
+    for (let idx = 0; idx < variants.length; idx++) {
+      const v = variants[idx];
+      const sizeName = (v.size || '').trim();
+      if (!sizeName) {
+        return res.status(400).json({ message: `Variant #${idx + 1} is missing a bottle size title.` });
+      }
+      if (seenSizes.has(sizeName.toLowerCase())) {
+        return res.status(400).json({ message: `Duplicate variant size "${sizeName}". Each size variant must be unique.` });
+      }
+      seenSizes.add(sizeName.toLowerCase());
+
+      const price = Number(v.price);
+      if (isNaN(price) || price <= 0 || !isFinite(price)) {
+        return res.status(400).json({ message: `Variant "${sizeName}" price must be a valid positive number.` });
+      }
+
+      let discountPrice = null;
+      if (v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
+        discountPrice = Number(v.discountPrice);
+        if (isNaN(discountPrice) || discountPrice <= 0 || !isFinite(discountPrice)) {
+          return res.status(400).json({ message: `Variant "${sizeName}" discount price must be a positive number.` });
+        }
+        if (discountPrice > price) {
+          return res.status(400).json({ message: `Variant "${sizeName}" discount price (Rs. ${discountPrice}) cannot exceed regular price (Rs. ${price}).` });
+        }
+      }
+
+      const stock = v.stock !== undefined ? parseInt(v.stock, 10) : 20;
+      if (isNaN(stock) || stock < 0) {
+        return res.status(400).json({ message: `Variant "${sizeName}" stock quantity cannot be negative.` });
+      }
+
+      formattedVariants.push({
+        id: v.id || `var_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        size: sizeName,
+        price,
+        discountPrice,
+        stock,
+        sku: (v.sku || `SKU-${Date.now().toString(36).toUpperCase()}-${idx}`).trim()
+      });
+    }
 
     const newProduct = {
       id: 'prod_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
@@ -191,7 +227,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       badge: badge ? badge.trim() : '',
       salesCount: 0,
       notes: notes || { top: [], heart: [], base: [] },
-      images: Array.isArray(images) && images.length > 0 ? images : ['https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80'],
+      images: Array.isArray(images) && images.length > 0 ? images : ['/brand-logo.png'],
       variants: formattedVariants,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -201,7 +237,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     res.status(201).json(newProduct);
   } catch (err) {
     console.error('Error creating product:', err);
-    res.status(500).json({ message: 'Failed to create product.' });
+    res.status(500).json({ message: 'Failed to create product: ' + err.message });
   }
 });
 
@@ -223,8 +259,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       badge,
       notes,
       images,
-      variants,
-      salesCount
+      variants
     } = req.body;
 
     const updates = {};
@@ -237,24 +272,60 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (badge !== undefined) updates.badge = badge.trim();
     if (notes !== undefined) updates.notes = notes;
     if (images !== undefined) updates.images = images;
-    if (salesCount !== undefined) updates.salesCount = Number(salesCount);
 
     if (variants && Array.isArray(variants)) {
-      updates.variants = variants.map((v, idx) => ({
-        id: v.id || `var_${Date.now()}_${idx}`,
-        size: v.size || '10ml Spray',
-        price: Number(v.price) || 0,
-        discountPrice: v.discountPrice ? Number(v.discountPrice) : null,
-        stock: v.stock !== undefined ? Number(v.stock) : 10,
-        sku: v.sku || `SKU-${idx}`
-      }));
+      const seenSizes = new Set();
+      const formattedVariants = [];
+
+      for (let idx = 0; idx < variants.length; idx++) {
+        const v = variants[idx];
+        const sizeName = (v.size || '').trim();
+        if (!sizeName) {
+          return res.status(400).json({ message: `Variant #${idx + 1} is missing a bottle size title.` });
+        }
+        if (seenSizes.has(sizeName.toLowerCase())) {
+          return res.status(400).json({ message: `Duplicate variant size "${sizeName}". Each size variant must be unique.` });
+        }
+        seenSizes.add(sizeName.toLowerCase());
+
+        const price = Number(v.price);
+        if (isNaN(price) || price <= 0 || !isFinite(price)) {
+          return res.status(400).json({ message: `Variant "${sizeName}" price must be a valid positive number.` });
+        }
+
+        let discountPrice = null;
+        if (v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
+          discountPrice = Number(v.discountPrice);
+          if (isNaN(discountPrice) || discountPrice <= 0 || !isFinite(discountPrice)) {
+            return res.status(400).json({ message: `Variant "${sizeName}" discount price must be a positive number.` });
+          }
+          if (discountPrice > price) {
+            return res.status(400).json({ message: `Variant "${sizeName}" discount price (Rs. ${discountPrice}) cannot exceed regular price (Rs. ${price}).` });
+          }
+        }
+
+        const stock = v.stock !== undefined ? parseInt(v.stock, 10) : 10;
+        if (isNaN(stock) || stock < 0) {
+          return res.status(400).json({ message: `Variant "${sizeName}" stock quantity cannot be negative.` });
+        }
+
+        formattedVariants.push({
+          id: v.id || `var_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+          size: sizeName,
+          price,
+          discountPrice,
+          stock,
+          sku: (v.sku || `SKU-${idx}`).trim()
+        });
+      }
+      updates.variants = formattedVariants;
     }
 
     const updated = await db.updateProduct(req.params.id, updates);
     res.json(updated);
   } catch (err) {
     console.error('Error updating product:', err);
-    res.status(500).json({ message: 'Failed to update product.' });
+    res.status(500).json({ message: 'Failed to update product: ' + err.message });
   }
 });
 
