@@ -23,7 +23,6 @@ if (!MONGO_URI) {
 function getInitialData() {
   const salt = bcrypt.genSaltSync(10);
   const adminPasswordHash = bcrypt.hashSync('admin123', salt);
-  const userPasswordHash = bcrypt.hashSync('ayaan123', salt);
 
   return {
     settings: {
@@ -71,58 +70,9 @@ function getInitialData() {
         address: 'SCENTORY Flagship Studio, Ulapane',
         city: 'Kandy',
         createdAt: new Date().toISOString()
-      },
-      {
-        id: 'usr_ayaan',
-        name: 'Ayaan',
-        email: 'mohamad@gmail.com',
-        password: userPasswordHash,
-        role: 'customer',
-        phone: '0771813023',
-        address: '313, Nawalapitiya road Ulapane',
-        city: 'Kandy',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'usr_ahamed',
-        name: 'Ahamed',
-        email: 'ahamed@gmail.com',
-        password: userPasswordHash,
-        role: 'customer',
-        phone: '0777433023',
-        address: 'Nawalapitiya',
-        city: 'Kandy',
-        createdAt: new Date().toISOString()
       }
     ],
-    products: [
-      {
-        id: 'prod_latafha',
-        name: 'Latafha',
-        tagline: 'Oriental Woody Extrait De Parfum',
-        description: 'Opulent spicy amber and smoky royal oud with rich drydown.',
-        gender: 'Unisex',
-        badge: 'Signature Edition',
-        scentFamily: 'Oriental Woody',
-        images: ['/brand-logo.png'],
-        rating: 5,
-        salesCount: 1,
-        isFeatured: true,
-        variants: [
-          { id: 'v_10ml', sku: 'DEC-10ML', size: '10ml Travel Atomizer', price: 3800, discountPrice: 3400, stock: 40 },
-          { id: 'v_20ml', sku: 'DEC-20ML', size: '20ml Decant Flacon', price: 7200, discountPrice: 6500, stock: 25 },
-          { id: 'v_50ml', sku: 'DEC-50ML', size: '50ml Signature Bottle', price: 16500, discountPrice: 14900, stock: 15 },
-          { id: 'v_100ml', sku: 'FLA-100ML', size: '100ml Pure Extrait', price: 28500, discountPrice: 25900, stock: 10 }
-        ],
-        notes: {
-          top: ['Bergamot', 'Neroli', 'Lemon'],
-          heart: ['Amber Resin', 'Oud'],
-          base: ['Vanilla', 'Sandalwood']
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ],
+    products: [],
     orders: [],
     reviews: [],
     notifications: [],
@@ -152,8 +102,8 @@ class Database {
           ...getInitialData(),
           ...parsed,
           settings: { ...getInitialData().settings, ...(parsed.settings || {}) },
-          products: parsed.products && parsed.products.length ? parsed.products : getInitialData().products,
-          users: parsed.users && parsed.users.length ? parsed.users : getInitialData().users
+          products: Array.isArray(parsed.products) ? parsed.products : [],
+          users: Array.isArray(parsed.users) && parsed.users.length ? parsed.users : getInitialData().users
         };
       }
     } catch (err) {
@@ -214,13 +164,12 @@ class Database {
             return { id: _id, ...clean };
           });
         } else {
-          for (const u of this.data.users) {
-            await this.mongoDb.collection('store_users').updateOne(
-              { _id: u.id },
-              { $set: u },
-              { upsert: true }
-            );
-          }
+          this.data.users = getInitialData().users;
+          await this.mongoDb.collection('store_users').updateOne(
+            { _id: 'usr_admin' },
+            { $set: this.data.users[0] },
+            { upsert: true }
+          );
         }
       } catch (e) {
         console.error('Sync users error:', e.message);
@@ -229,12 +178,10 @@ class Database {
       // 3. Products
       try {
         const pDocs = await this.mongoDb.collection('store_products').find({}).toArray();
-        if (pDocs.length > 0) {
-          this.data.products = pDocs.map(p => {
-            const { _id, ...clean } = p;
-            return { id: _id, ...clean };
-          });
-        }
+        this.data.products = pDocs.map(p => {
+          const { _id, ...clean } = p;
+          return { id: _id, ...clean };
+        });
       } catch (e) {
         console.error('Sync products error:', e.message);
       }
@@ -389,20 +336,21 @@ class Database {
   }
 
   async deleteUser(id) {
-    const idx = this.data.users.findIndex(u => u.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.users.splice(idx, 1)[0];
-      await this.save();
-    }
+    const user = this.data.users.find(u => u.id === id || u._id === id);
+    const email = user?.email;
+    this.data.users = this.data.users.filter(u => u.id !== id && u._id !== id && (!email || u.email !== email));
+    await this.save();
+
     if (this.mongoDb) {
       try {
-        await this.mongoDb.collection('store_users').deleteOne({ _id: id });
+        const orClauses = [{ _id: id }, { id: id }];
+        if (email) orClauses.push({ email: email });
+        await this.mongoDb.collection('store_users').deleteMany({ $or: orClauses });
       } catch (err) {
         console.error('Error deleting user from MongoDB:', err.message);
       }
     }
-    return removed || { id, deleted: true };
+    return user || { id, deleted: true };
   }
 
   // ==================== PRODUCTS ====================
@@ -455,20 +403,20 @@ class Database {
   }
 
   async deleteProduct(id) {
-    const idx = this.data.products.findIndex(p => p.id === id);
-    let removed = null;
-    if (idx !== -1) {
-      removed = this.data.products.splice(idx, 1)[0];
-      await this.save();
-    }
+    const product = this.data.products.find(p => p.id === id || p._id === id);
+    this.data.products = this.data.products.filter(p => p.id !== id && p._id !== id);
+    await this.save();
+
     if (this.mongoDb) {
       try {
-        await this.mongoDb.collection('store_products').deleteOne({ _id: id });
+        await this.mongoDb.collection('store_products').deleteMany({
+          $or: [{ _id: id }, { id: id }]
+        });
       } catch (err) {
         console.error('Error deleting product from MongoDB:', err.message);
       }
     }
-    return removed || { id, deleted: true };
+    return product || { id, deleted: true };
   }
 
   // ==================== ORDERS ====================

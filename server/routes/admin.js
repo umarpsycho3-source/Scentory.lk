@@ -56,17 +56,29 @@ router.get('/dashboard-stats', async (req, res) => {
       });
     });
 
-    // Top selling fragrances
+    // Top selling fragrances calculated dynamically from verified customer orders
+    const orderSalesCount = {};
+    orders.forEach(o => {
+      if (o.paymentStatus !== 'rejected') {
+        (o.items || []).forEach(item => {
+          const pid = item.productId || item.id;
+          if (pid) {
+            orderSalesCount[pid] = (orderSalesCount[pid] || 0) + (Number(item.quantity) || 1);
+          }
+        });
+      }
+    });
+
     const topProducts = [...products]
-      .sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
-      .slice(0, 5)
       .map(p => ({
         id: p.id,
         name: p.name,
         scentFamily: p.scentFamily,
-        salesCount: p.salesCount || 0,
+        salesCount: orderSalesCount[p.id] || 0,
         image: p.images?.[0]
-      }));
+      }))
+      .sort((a, b) => b.salesCount - a.salesCount)
+      .slice(0, 5);
 
     res.json({
       totalRevenue,
@@ -142,35 +154,7 @@ router.get('/users', async (req, res) => {
     const users = db.getUsers();
     const orders = db.getOrders();
 
-    const customerMap = new Map();
-
-    // 1. Add all registered users
-    users.forEach(u => {
-      const key = (u.email || '').toLowerCase().trim() || u.id;
-      customerMap.set(key, { ...u });
-    });
-
-    // 2. Add any customer details from orders
-    orders.forEach(o => {
-      const c = o.customerDetails;
-      if (c) {
-        const key = (c.email || '').toLowerCase().trim() || (c.phone || '').trim();
-        if (key && !customerMap.has(key)) {
-          customerMap.set(key, {
-            id: o.userId || ('cust_' + Math.random().toString(36).substring(2, 7)),
-            name: c.name || 'Customer',
-            email: c.email || '',
-            phone: c.phone || '',
-            address: c.address || '',
-            city: c.city || '',
-            role: 'customer',
-            createdAt: o.createdAt
-          });
-        }
-      }
-    });
-
-    const customerList = Array.from(customerMap.values()).map(u => {
+    const customerList = users.map(u => {
       const userOrders = orders.filter(o => 
         o.userId === u.id || 
         (u.email && o.customerDetails?.email && o.customerDetails.email.toLowerCase().trim() === u.email.toLowerCase().trim()) ||

@@ -39,28 +39,6 @@
   },
   "users": [
     {
-      "id": "usr_ahamed",
-      "city": "Kandy",
-      "name": "Ahamed",
-      "role": "customer",
-      "email": "ahamed@gmail.com",
-      "phone": "0777433023",
-      "address": "Nawalapitiya",
-      "password": "$2b$10$ucr36esVZsO5zBjUmL7X5OobbVWmi8bk4C22h7FJ3z8KovxD/8tA2",
-      "createdAt": "2026-11-24T17:30:13.559Z"
-    },
-    {
-      "id": "usr_ayaan",
-      "city": "Kandy",
-      "name": "Ayaan",
-      "role": "customer",
-      "email": "mohamad@gmail.com",
-      "phone": "0771813023",
-      "address": "313, Nawalapitiya road Ulapane",
-      "password": "$2b$10$ucr36esVZsO5zBjUmL7X5OobbVWmi8bk4C22h7FJ3z8KovxD/8tA2",
-      "createdAt": "2026-11-24T17:30:13.559Z"
-    },
-    {
       "id": "usr_admin",
       "city": "Kandy",
       "name": "Store Administrator",
@@ -72,74 +50,7 @@
       "createdAt": "2026-11-24T17:30:13.537Z"
     }
   ],
-  "products": [
-    {
-      "id": "prod_latafha",
-      "name": "Latafha",
-      "badge": "Signature Edition",
-      "notes": {
-        "top": [
-          "Bergamot",
-          "Neroli",
-          "Lemon"
-        ],
-        "base": [
-          "Vanilla",
-          "Sandalwood"
-        ],
-        "heart": [
-          "Amber Resin",
-          "Oud"
-        ]
-      },
-      "gender": "Unisex",
-      "images": [
-        "/brand-logo.png"
-      ],
-      "rating": 5,
-      "tagline": "Oriental Woody Extrait De Parfum",
-      "variants": [
-        {
-          "id": "v_10ml",
-          "sku": "DEC-10ML",
-          "size": "10ml Travel Atomizer",
-          "price": 3800,
-          "stock": 40,
-          "discountPrice": 3400
-        },
-        {
-          "id": "v_20ml",
-          "sku": "DEC-20ML",
-          "size": "20ml Decant Flacon",
-          "price": 7200,
-          "stock": 25,
-          "discountPrice": 6500
-        },
-        {
-          "id": "v_50ml",
-          "sku": "DEC-50ML",
-          "size": "50ml Signature Bottle",
-          "price": 16500,
-          "stock": 15,
-          "discountPrice": 14900
-        },
-        {
-          "id": "v_100ml",
-          "sku": "FLA-100ML",
-          "size": "100ml Pure Extrait",
-          "price": 28500,
-          "stock": 10,
-          "discountPrice": 25900
-        }
-      ],
-      "createdAt": "2026-11-24T17:30:13.924Z",
-      "updatedAt": "2026-11-24T17:30:13.924Z",
-      "isFeatured": true,
-      "salesCount": 1,
-      "description": "Opulent spicy amber and smoky royal oud with rich drydown.",
-      "scentFamily": "Oriental Woody"
-    }
-  ],
+  "products": [],
   "orders": [],
   "reviews": [],
   "notifications": [],

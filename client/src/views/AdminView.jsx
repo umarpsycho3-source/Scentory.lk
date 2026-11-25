@@ -1515,16 +1515,22 @@ export default function AdminView({ onBackToShop }) {
                   <span className="text-xs font-sans text-[#d4af37]">Live Order Metrics</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {stats.topProducts.map((p) => (
-                    <div key={p.id} className="p-3.5 rounded-xl bg-black/40 border border-white/5 flex items-center gap-3">
-                      <img src={p.image} alt="" className="w-12 h-12 rounded-lg object-cover border border-white/10" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-semibold text-white truncate block">{p.name}</span>
-                        <span className="text-[10px] text-gray-400">{p.scentFamily}</span>
-                        <span className="text-[11px] text-[#f3e5ab] font-bold block mt-0.5">{p.salesCount} Bottles Sold</span>
+                  {stats.topProducts && stats.topProducts.length > 0 ? (
+                    stats.topProducts.map((p) => (
+                      <div key={p.id} className="p-3.5 rounded-xl bg-black/40 border border-white/5 flex items-center gap-3">
+                        <img src={p.image || '/brand-logo.png'} alt="" className="w-12 h-12 rounded-lg object-cover border border-white/10" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-semibold text-white truncate block">{p.name}</span>
+                          <span className="text-[10px] text-gray-400">{p.scentFamily}</span>
+                          <span className="text-[11px] text-[#f3e5ab] font-bold block mt-0.5">{p.salesCount || 0} Bottles Sold</span>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-5 text-center text-xs text-gray-400 tracking-wide">
+                      No bottle sales recorded yet. Once customer orders are placed, live metrics appear here automatically.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
