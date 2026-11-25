@@ -46,8 +46,8 @@ export default function AddReviewModal({ isOpen, onClose, onReviewAdded, presele
     e.preventDefault();
     setError('');
 
-    if (!customerName || !comment) {
-      setError('Please provide your name and review comments.');
+    if (!customerName.trim() || !comment.trim()) {
+      setError('Please provide your name and your fragrance review comment.');
       return;
     }
 

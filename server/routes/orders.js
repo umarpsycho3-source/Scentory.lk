@@ -49,8 +49,18 @@ router.post('/upload-slip', authenticateToken, upload.single('receipt'), async (
   if (!req.file) {
     return res.status(400).json({ message: 'No receipt file provided.' });
   }
-  const slipUrl = `/uploads/receipts/${req.file.filename}`;
-  res.json({ slipUrl });
+  const mime = req.file.mimetype || 'image/jpeg';
+  const base64 = req.file.buffer.toString('base64');
+  const slipUrl = `data:${mime};base64,${base64}`;
+
+  // Also attempt saving to disk if writable
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `slip-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
+  try {
+    fs.writeFileSync(path.join(receiptDir, filename), req.file.buffer);
+  } catch (e) {}
+
+  res.json({ slipUrl, filename });
 });
 
 // CREATE Order (Customer must be authenticated)
@@ -231,7 +241,23 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req, res) =>
 
     const updates = {};
     if (orderStatus) updates.orderStatus = orderStatus;
-    if (paymentStatus) updates.paymentStatus = paymentStatus;
+    if (paymentStatus) {
+      updates.paymentStatus = paymentStatus;
+      // Auto-decrement inventory stock and increment sales count when verified
+      if (paymentStatus === 'verified' && existing.paymentStatus !== 'verified') {
+        for (const item of (existing.items || [])) {
+          const product = db.getProductById(item.productId);
+          if (product && Array.isArray(product.variants)) {
+            const vIdx = product.variants.findIndex(v => v.id === item.variantId || v.size === item.variantSize);
+            if (vIdx !== -1) {
+              product.variants[vIdx].stock = Math.max(0, (Number(product.variants[vIdx].stock) || 0) - (Number(item.quantity) || 1));
+            }
+            product.salesCount = (Number(product.salesCount) || 0) + (Number(item.quantity) || 1);
+            await db.updateProduct(product.id, { variants: product.variants, salesCount: product.salesCount });
+          }
+        }
+      }
+    }
     if (adminNotes !== undefined) updates.adminNotes = adminNotes;
 
     const updated = await db.updateOrder(req.params.id, updates);

@@ -14,8 +14,17 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Name, email, and password are required.' });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ message: 'Please provide a valid email address (e.g. yourname@gmail.com).' });
+    }
+
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+
+    if (phone && phone.trim().replace(/[^0-9]/g, '').length < 9) {
+      return res.status(400).json({ message: 'Please provide a valid WhatsApp / contact phone number (e.g. 0771234567).' });
     }
 
     const existing = db.getUserByEmail(email);

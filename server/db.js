@@ -12,7 +12,13 @@ try {
   }
 } catch (e) {}
 
-const MONGO_URI = process.env.MONGODB_URI || process.env.DATABASE_URL || 'mongodb+srv://scentory10_db_user:Scentory2026@cluster0.gg2kvzg.mongodb.net/scentory?retryWrites=true&w=majority';
+let MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI && process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('mongodb://') || process.env.DATABASE_URL.startsWith('mongodb+srv://'))) {
+  MONGO_URI = process.env.DATABASE_URL;
+}
+if (!MONGO_URI) {
+  MONGO_URI = 'mongodb+srv://scentory10_db_user:Scentory2026@cluster0.gg2kvzg.mongodb.net/scentory?retryWrites=true&w=majority';
+}
 
 function getInitialData() {
   const salt = bcrypt.genSaltSync(10);
@@ -474,12 +480,17 @@ class Database {
     return this.getOrders().find(o => o.id === id);
   }
 
-  getUserOrders(userId) {
-    return this.getOrders().filter(o => o.userId === userId);
+  getUserOrders(userId, userEmail) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    return this.getOrders().filter(o => {
+      if (userId && o.userId === userId) return true;
+      if (cleanEmail && o.customerDetails?.email && o.customerDetails.email.trim().toLowerCase() === cleanEmail) return true;
+      return false;
+    });
   }
 
-  getOrdersByUserId(userId) {
-    return this.getUserOrders(userId);
+  getOrdersByUserId(userId, userEmail) {
+    return this.getUserOrders(userId, userEmail);
   }
 
   async addOrder(order) {
@@ -696,6 +707,10 @@ class Database {
   }
 
   // ==================== PASSWORD RESET ====================
+  getPasswordResetRequests() {
+    return this.data.passwordResetRequests || [];
+  }
+
   createPasswordResetRequest(email, code) {
     if (!this.data.passwordResetRequests) this.data.passwordResetRequests = [];
     const request = {

@@ -35,8 +35,17 @@ router.post('/upload-image', authenticateToken, requireAdmin, upload.single('ima
   if (!req.file) {
     return res.status(400).json({ message: 'No image file uploaded.' });
   }
-  const imageUrl = `/uploads/products/${req.file.filename}`;
-  res.json({ imageUrl });
+  const mime = req.file.mimetype || 'image/jpeg';
+  const base64 = req.file.buffer.toString('base64');
+  const imageUrl = `data:${mime};base64,${base64}`;
+
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `product-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
+  try {
+    fs.writeFileSync(path.join(uploadDir, filename), req.file.buffer);
+  } catch (e) {}
+
+  res.json({ imageUrl, filename });
 });
 
 // GET all products with filtering & search

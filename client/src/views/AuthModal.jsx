@@ -36,12 +36,32 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
 
     try {
       if (mode === 'login') {
-        await login(email, password);
-      } else {
-        if (!name || !email || !password || !phone) {
-          throw new Error('Please fill all required fields including your WhatsApp contact number.');
+        if (!email.trim() || !password) {
+          throw new Error('Please enter both your registered email and password.');
         }
-        await register({ name, email, password, phone, address, city });
+        await login(email.trim(), password);
+      } else {
+        if (!name.trim()) throw new Error('Please enter your full name.');
+        if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          throw new Error('Please enter a valid email address (e.g. name@gmail.com).');
+        }
+        if (!password || password.length < 6) {
+          throw new Error('Password must be at least 6 characters long.');
+        }
+        if (!phone.trim() || phone.replace(/[^0-9]/g, '').length < 9) {
+          throw new Error('Please enter a valid WhatsApp phone number (e.g. 0771234567).');
+        }
+        if (!address.trim()) {
+          throw new Error('Please enter your delivery street address for courier dispatch.');
+        }
+        await register({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          phone: phone.trim(),
+          address: address.trim(),
+          city: (city || 'Colombo').trim()
+        });
       }
       onClose();
       if (onAuthSuccess) onAuthSuccess();

@@ -35,8 +35,17 @@ router.post('/upload-photo', upload.single('photo'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No photo provided.' });
   }
-  const photoUrl = `/uploads/reviews/${req.file.filename}`;
-  res.json({ photoUrl });
+  const mime = req.file.mimetype || 'image/jpeg';
+  const base64 = req.file.buffer.toString('base64');
+  const photoUrl = `data:${mime};base64,${base64}`;
+
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `review-${Date.now()}-${Math.random().toString(36).substring(2, 7)}${ext}`;
+  try {
+    fs.writeFileSync(path.join(reviewUploadDir, filename), req.file.buffer);
+  } catch (e) {}
+
+  res.json({ photoUrl, filename });
 });
 
 // GET all reviews with rating metrics

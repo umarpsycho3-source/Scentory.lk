@@ -743,6 +743,20 @@ export default function AdminView({ onBackToShop }) {
       const payload = { ...productForm };
       delete payload._notesDraft;
 
+      if (!payload.name || !payload.name.trim()) {
+        alert('Please enter a fragrance title.');
+        return;
+      }
+      if (!payload.variants || !payload.variants.length) {
+        alert('Please add at least one bottle size variant (e.g. 10ml, 20ml, 50ml, 100ml) with pricing.');
+        return;
+      }
+      const hasInvalidPrice = payload.variants.some(v => !v.price || Number(v.price) <= 0);
+      if (hasInvalidPrice) {
+        alert('Every bottle size variant must have a valid price in LKR.');
+        return;
+      }
+
       const res = await fetch(url, {
         method,
         headers: {
@@ -926,6 +940,12 @@ export default function AdminView({ onBackToShop }) {
     e.preventDefault();
     try {
       const payload = { ...settings };
+      if (!payload.storeName || !payload.storeName.trim()) {
+        alert('Please provide a store brand name.');
+        return;
+      }
+      payload.deliveryFee = Math.max(0, Number(payload.deliveryFee) || 0);
+
       if (payload.heroVideoUrl && typeof payload.heroVideoUrl === 'string' && payload.heroVideoUrl.startsWith('data:video')) {
         payload.heroVideoUrl = '/hero-uploaded-video.mp4';
         setSettings(prev => ({ ...prev, heroVideoUrl: '/hero-uploaded-video.mp4' }));

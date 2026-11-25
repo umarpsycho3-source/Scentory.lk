@@ -142,6 +142,24 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
       return;
     }
 
+    if (!name || !name.trim()) {
+      setOrderError('Please enter your full customer name.');
+      return;
+    }
+
+    if (!phone || !phone.trim() || phone.replace(/[^0-9]/g, '').length < 9) {
+      setOrderError('Please enter a valid WhatsApp contact number (e.g. 0771234567).');
+      return;
+    }
+
+    if (!address || !address.trim()) {
+      setOrderError(fulfillmentType === 'pickup' 
+        ? 'Please enter your district/town or address for pick up order identity verification.'
+        : 'Please enter your complete delivery street address for courier dispatch.'
+      );
+      return;
+    }
+
     // Check mandatory slip upload
     if (!bankSlipUrl) {
       setOrderError('Payment Slip is mandatory! Please upload your bank transfer receipt to complete order placement.');
