@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Upload, CheckCircle2, AlertCircle, Building2, Phone, MapPin, Mail, User, ArrowLeft, ExternalLink, Clock, AlertTriangle, Truck, Store } from 'lucide-react';
+import { ShieldCheck, Upload, CheckCircle2, AlertCircle, Building2, Phone, MapPin, Mail, User, ArrowLeft, ExternalLink, Clock, AlertTriangle, Truck, Store, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 
 export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal }) {
   const { user } = useAuth();
-  const { cart, subtotal, deliveryFee, clearCart } = useCart();
+  const { cart, subtotal, dealDiscount, discountedSubtotal, promotionalDeal, deliveryFee, clearCart } = useCart();
 
   // Fulfillment Method: 'delivery' (Rs. 500) vs 'pickup' (FREE - Rs. 0)
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
 
-  // Dynamic calculations based on fulfillment method
+  // Dynamic calculations based on fulfillment method and promotion
   const activeDeliveryFee = fulfillmentType === 'pickup' ? 0 : (deliveryFee || 500);
-  const checkoutTotal = subtotal + activeDeliveryFee;
+  const checkoutTotal = Math.max(0, (discountedSubtotal !== undefined ? discountedSubtotal : subtotal)) + activeDeliveryFee;
 
   // Form fields
   const [name, setName] = useState(user?.name || '');
@@ -183,6 +183,9 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
         },
         items: cart,
         fulfillmentType, // 'delivery' | 'pickup'
+        subtotal,
+        dealDiscount: dealDiscount || 0,
+        dealTitle: promotionalDeal && promotionalDeal.enabled ? promotionalDeal.title : '',
         deliveryFee: activeDeliveryFee,
         finalTotal: checkoutTotal,
         bankSlipUrl,
@@ -873,6 +876,15 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
                   <span>Subtotal</span>
                   <span className="text-white font-medium">Rs. {subtotal.toLocaleString()}</span>
                 </div>
+                {dealDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-400 font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Promotion ({promotionalDeal?.title || 'Special Deal'})</span>
+                    </span>
+                    <span>-Rs. {dealDiscount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-gray-400">
                   <span className="flex items-center gap-1.5">
                     {fulfillmentType === 'pickup' ? (

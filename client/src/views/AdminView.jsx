@@ -5,7 +5,7 @@ import {
   ExternalLink, Eye, ArrowUpRight, DollarSign, Users, AlertTriangle,
   Upload, Link as LinkIcon, RefreshCw, Printer, Shield, ChevronDown, LogOut,
   Bell, MessageSquare, Calendar, Star, Sparkles, Phone, MessageCircle,
-  Crown, Key, Lock, Mail, Check, X
+  Crown, Key, Lock, Mail, Check, X, Gift, Tag, Percent
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -133,6 +133,7 @@ export default function AdminView({ onBackToShop }) {
     gender: 'unisex',
     scentFamily: 'Oriental Woody',
     isFeatured: true,
+    isSpecialOffer: false,
     badge: 'Signature Edition',
     notes: { top: ['Bergamot', 'Neroli', 'Lemon'], heart: ['Amber Resin', 'Oud'], base: ['Vanilla', 'Sandalwood'] },
     _notesDraft: { top: 'Bergamot, Neroli, Lemon', heart: 'Amber Resin, Oud', base: 'Vanilla, Sandalwood' },
@@ -507,9 +508,11 @@ export default function AdminView({ onBackToShop }) {
     `).join('');
 
     const subtotal = (order.items || []).reduce((acc, i) => acc + ((i.price || 0) * (i.quantity || 1)), 0);
+    const dealDiscount = Number(order.dealDiscount || 0);
+    const dealTitle = order.dealTitle || 'Promotional Deal';
     const isPickup = order.fulfillmentType === 'pickup' || order.deliveryFee === 0;
     const deliveryFee = isPickup ? 0 : (order.deliveryFee !== undefined ? Number(order.deliveryFee) : 500);
-    const finalTotal = order.finalTotal || order.totalAmount || (subtotal + deliveryFee);
+    const finalTotal = order.finalTotal || order.totalAmount || Math.max(0, subtotal - dealDiscount + deliveryFee);
     const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date().toLocaleDateString();
 
     const invoiceContent = `
@@ -698,6 +701,12 @@ export default function AdminView({ onBackToShop }) {
               <td style="color: #4b5563;">Items Subtotal:</td>
               <td style="text-align: right; font-weight: 600;">Rs. ${subtotal.toLocaleString()}</td>
             </tr>
+            ${dealDiscount > 0 ? `
+            <tr>
+              <td style="color: #059669; font-weight: 600;">Promotion (${dealTitle}):</td>
+              <td style="text-align: right; font-weight: 700; color: #059669;">- Rs. ${dealDiscount.toLocaleString()}</td>
+            </tr>
+            ` : ''}
             <tr>
               <td style="color: #4b5563;">Fulfillment (${isPickup ? 'Store Pick Up at Ulapane' : 'Islandwide Courier Delivery'}):</td>
               <td style="text-align: right; font-weight: 600; color: ${isPickup ? '#059669' : '#111827'};">
@@ -1457,6 +1466,21 @@ export default function AdminView({ onBackToShop }) {
           </button>
 
           <button
+            onClick={() => setActiveTab('deals')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'deals'
+                ? 'bg-[#d4af37] text-black shadow-lg font-bold'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Gift className="w-4 h-4 flex-shrink-0" />
+            <span>Promotions & Deals</span>
+            {settings?.promotionalDeal?.enabled && (
+              <span className="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Deal Active" />
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'settings'
@@ -1927,6 +1951,15 @@ export default function AdminView({ onBackToShop }) {
                             <span className="text-white font-semibold">Rs. {Number(item.subtotal || 0).toLocaleString()}</span>
                           </div>
                         ))}
+                        {Number(selectedOrder.dealDiscount || 0) > 0 && (
+                          <div className="pt-2 flex justify-between text-xs text-emerald-400 font-medium">
+                            <span className="flex items-center gap-1.5">
+                              <Gift className="w-3.5 h-3.5" />
+                              <span>Promotional Savings ({selectedOrder.dealTitle || 'Promotional Deal'}):</span>
+                            </span>
+                            <span className="font-bold">- Rs. {Number(selectedOrder.dealDiscount).toLocaleString()}</span>
+                          </div>
+                        )}
                         <div className="pt-3 flex justify-between font-bold text-sm">
                           <span className="text-gray-300">Final Order Total:</span>
                           <span className="gold-text-gradient">Rs. {Number(selectedOrder.finalTotal || selectedOrder.totalAmount || 0).toLocaleString()}</span>
@@ -2676,6 +2709,7 @@ export default function AdminView({ onBackToShop }) {
                         gender: 'Unisex',
                         scentFamily: 'Oriental Woody',
                         isFeatured: true,
+                        isSpecialOffer: false,
                         badge: 'Signature Edition',
                         images: ['/brand-logo.png'],
                         variants: [
@@ -2721,6 +2755,12 @@ export default function AdminView({ onBackToShop }) {
                               {product.badge}
                             </span>
                           )}
+                          {product.isSpecialOffer && (
+                            <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold bg-rose-600/95 text-white uppercase tracking-wider shadow flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5" />
+                              <span>Offer Active</span>
+                            </span>
+                          )}
                         </div>
 
                         <span className="text-[10px] text-[#d4af37] uppercase tracking-wider">{product.scentFamily} • {product.gender}</span>
@@ -2751,6 +2791,7 @@ export default function AdminView({ onBackToShop }) {
                               setEditingProduct(product);
                               setProductForm({
                                 ...product,
+                                isSpecialOffer: Boolean(product.isSpecialOffer),
                                 notes: {
                                   top: product.notes?.top || [],
                                   heart: product.notes?.heart || [],
@@ -2990,7 +3031,7 @@ export default function AdminView({ onBackToShop }) {
                           />
                         </div>
 
-                        <div className="flex items-center pt-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-5">
                           <label className="flex items-center gap-2 cursor-pointer text-xs text-white">
                             <input
                               type="checkbox"
@@ -2998,7 +3039,17 @@ export default function AdminView({ onBackToShop }) {
                               onChange={(e) => setProductForm({ ...productForm, isFeatured: e.target.checked })}
                               className="w-4 h-4 rounded text-[#d4af37] focus:ring-[#d4af37]"
                             />
-                            <span>Feature This Fragrance on Home Page</span>
+                            <span>Feature on Home Page</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-rose-300 bg-rose-950/40 px-3.5 py-1.5 rounded-xl border border-rose-500/30 hover:border-rose-500/60 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(productForm.isSpecialOffer)}
+                              onChange={(e) => setProductForm({ ...productForm, isSpecialOffer: e.target.checked })}
+                              className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 accent-rose-500 cursor-pointer"
+                            />
+                            <span className="font-semibold">Display in Special Offers Section</span>
                           </label>
                         </div>
                       </div>
@@ -3603,6 +3654,357 @@ export default function AdminView({ onBackToShop }) {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: PROMOTIONS & DEALS (BUY X GET Y FREE) */}
+          {activeTab === 'deals' && (
+            <div className="space-y-6 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="font-serif-luxury text-xl font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-[#d4af37]" />
+                    <span>Promotions & Deals Engine</span>
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Configure multi-bottle promotions like "Buy 2 Get 1 Free" or "Buy 2 Get 3 Free". The store automatically detects qualifying counts and discounts the lowest-priced perfumes to Rs. 0 at checkout.
+                  </p>
+                </div>
+                
+                {/* Active Status Badge */}
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                    settings?.promotionalDeal?.enabled
+                      ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/50'
+                      : 'bg-gray-800 text-gray-400 border border-white/10'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${settings?.promotionalDeal?.enabled ? 'bg-emerald-400 animate-ping' : 'bg-gray-500'}`} />
+                    <span>{settings?.promotionalDeal?.enabled ? 'Promotion Active' : 'Promotion Disabled'}</span>
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveSettings} className="glass-panel p-6 sm:p-8 rounded-2xl border border-[#d4af37]/25 space-y-8">
+                {/* 1. MASTER ON/OFF TOGGLE */}
+                <div className="p-4 rounded-xl bg-black/40 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#d4af37]" />
+                      <span>Enable Storewide Deal</span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      When turned on, the promotion banner appears on the website and eligible cart items automatically get discounted.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings?.promotionalDeal?.enabled)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSettings(prev => ({
+                          ...prev,
+                          promotionalDeal: {
+                            ...(prev?.promotionalDeal || {}),
+                            enabled: checked
+                          }
+                        }));
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-14 h-7 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                {/* 2. ONE-CLICK PRESET BUTTONS */}
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-[#fcf6ba] uppercase tracking-wider">
+                    Quick Preset Configurations (1-Click Setup)
+                  </label>
+                  <p className="text-xs text-gray-400">
+                    Click any popular promotion formula below to automatically populate the rules and announcements:
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      {
+                        label: 'Buy 1 Get 1 Free',
+                        buy: 1,
+                        free: 1,
+                        badge: 'BUY 1 GET 1 FREE',
+                        desc: 'Classic BOGO. For every 2 perfumes added, 1 is free.'
+                      },
+                      {
+                        label: 'Buy 2 Get 1 Free',
+                        buy: 2,
+                        free: 1,
+                        badge: 'BUY 2 GET 1 FREE',
+                        desc: 'Best seller deal. For every 3 perfumes added, 1 is free.'
+                      },
+                      {
+                        label: 'Buy 2 Get 3 Free',
+                        buy: 2,
+                        free: 3,
+                        badge: 'BUY 2 GET 3 FREE',
+                        desc: 'Mega deal! For every 5 perfumes added, 3 are free.'
+                      },
+                      {
+                        label: 'Buy 3 Get 1 Free',
+                        buy: 3,
+                        free: 1,
+                        badge: 'BUY 3 GET 1 FREE',
+                        desc: 'Bundle deal. For every 4 perfumes added, 1 is free.'
+                      }
+                    ].map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              title: preset.label,
+                              buyQty: preset.buy,
+                              freeQty: preset.free,
+                              badgeText: preset.badge,
+                              bannerText: `Special Promotion: ${preset.label}! Purchase qualifying perfumes and enjoy free fragrances calculated automatically at checkout.`,
+                              showBanner: true
+                            }
+                          }));
+                        }}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          settings?.promotionalDeal?.buyQty === preset.buy && settings?.promotionalDeal?.freeQty === preset.free
+                            ? 'bg-[#d4af37]/20 border-[#d4af37] text-white shadow-lg'
+                            : 'bg-black/30 border-white/10 hover:border-white/30 text-gray-300'
+                        }`}
+                      >
+                        <div className="font-bold text-xs uppercase text-[#d4af37] flex items-center justify-between">
+                          <span>{preset.label}</span>
+                          {settings?.promotionalDeal?.buyQty === preset.buy && settings?.promotionalDeal?.freeQty === preset.free && (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                          {preset.desc}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. RULE SPECIFICATIONS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                      Buy Quantity (Number of Bottles Customer Pays For) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={settings?.promotionalDeal?.buyQty || 2}
+                        onChange={(e) => {
+                          const val = Math.max(1, parseInt(e.target.value) || 1);
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              buyQty: val
+                            }
+                          }));
+                        }}
+                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-[#d4af37] focus:outline-none"
+                        required
+                      />
+                      <span className="absolute right-4 top-3.5 text-xs text-gray-500 font-semibold uppercase">Bottles</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      e.g. In "Buy 2 Get 3 Free", enter <strong>2</strong>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                      Free Quantity (Number of Bottles Given For Free) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={settings?.promotionalDeal?.freeQty || 1}
+                        onChange={(e) => {
+                          const val = Math.max(1, parseInt(e.target.value) || 1);
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              freeQty: val
+                            }
+                          }));
+                        }}
+                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-[#d4af37] focus:outline-none"
+                        required
+                      />
+                      <span className="absolute right-4 top-3.5 text-xs text-gray-500 font-semibold uppercase">Free Bottles</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      e.g. In "Buy 2 Get 3 Free", enter <strong>3</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mathematical Formula Explanation Card */}
+                <div className="p-4 rounded-xl bg-[#14141c] border border-[#d4af37]/30 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#d4af37]/20 flex items-center justify-center flex-shrink-0 text-[#d4af37]">
+                    <Percent className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <span className="font-bold text-[#fcf6ba] uppercase tracking-wider block">
+                      Active Mathematical Calculation Logic
+                    </span>
+                    <p className="text-gray-300 leading-relaxed">
+                      Every group of <strong className="text-white">{(Number(settings?.promotionalDeal?.buyQty || 2) + Number(settings?.promotionalDeal?.freeQty || 1))} bottles</strong> in a customer's cart unlocks <strong className="text-emerald-400">{Number(settings?.promotionalDeal?.freeQty || 1)} free bottle(s)</strong>.
+                    </p>
+                    <p className="text-gray-400 text-[11px]">
+                      The system sorts all selected bottle sizes by price and systematically applies 100% discount (Rs. 0) to the {Number(settings?.promotionalDeal?.freeQty || 1)} lowest-priced item(s).
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4. ANNOUNCEMENT & BADGE TEXTS */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                        Promotion Name / Title
+                      </label>
+                      <input
+                        type="text"
+                        value={settings?.promotionalDeal?.title || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              title: val
+                            }
+                          }));
+                        }}
+                        placeholder="e.g. Buy 2 Get 3 Free"
+                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:border-[#d4af37] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                        Badge Text (Shows in Cart & Product Badges)
+                      </label>
+                      <input
+                        type="text"
+                        value={settings?.promotionalDeal?.badgeText || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              badgeText: val
+                            }
+                          }));
+                        }}
+                        placeholder="e.g. BUY 2 GET 3 FREE"
+                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:border-[#d4af37] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                      Home Page Announcement Banner Text
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={settings?.promotionalDeal?.bannerText || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSettings(prev => ({
+                          ...prev,
+                          promotionalDeal: {
+                            ...(prev?.promotionalDeal || {}),
+                            bannerText: val
+                          }
+                        }));
+                      }}
+                      placeholder="e.g. Exclusive Offer: Buy 2 perfumes and get 3 free! Discount applies automatically at checkout."
+                      className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs focus:border-[#d4af37] focus:outline-none leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <input
+                      type="checkbox"
+                      id="showDealBanner"
+                      checked={settings?.promotionalDeal?.showBanner !== false}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSettings(prev => ({
+                          ...prev,
+                          promotionalDeal: {
+                            ...(prev?.promotionalDeal || {}),
+                            showBanner: checked
+                          }
+                        }));
+                      }}
+                      className="w-4 h-4 rounded bg-[#181822] border-white/20 text-[#d4af37] focus:ring-0 cursor-pointer"
+                    />
+                    <label htmlFor="showDealBanner" className="text-xs text-gray-300 cursor-pointer">
+                      Display announcement banner prominently at the top of the Home Page
+                    </label>
+                  </div>
+                </div>
+
+                {/* 5. LIVE CUSTOMER PREVIEW */}
+                <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                    <span>Live Customer Preview (How it appears on website)</span>
+                    <span className="text-[10px] text-emerald-400 font-normal">Real-time Preview</span>
+                  </div>
+
+                  {/* Banner Preview */}
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#d4af37]/20 via-[#aa820a]/20 to-[#d4af37]/20 border border-[#d4af37]/40 flex items-center gap-3 text-xs">
+                    <div className="w-8 h-8 rounded-full bg-[#d4af37] text-black flex items-center justify-center font-bold flex-shrink-0">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#fcf6ba] uppercase tracking-wide">
+                          {settings?.promotionalDeal?.title || 'Buy 2 Get 1 Free'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#d4af37] text-black uppercase">
+                          {settings?.promotionalDeal?.badgeText || 'SPECIAL OFFER'}
+                        </span>
+                      </div>
+                      <p className="text-gray-300 text-[11px] mt-0.5 truncate">
+                        {settings?.promotionalDeal?.bannerText || 'Add qualifying items to your bag to enjoy complimentary fragrances.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. SAVE BUTTON */}
+                <div className="flex justify-end pt-4 border-t border-white/10">
+                  <button
+                    type="submit"
+                    className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#aa820a] hover:from-[#fcf6ba] hover:to-[#d4af37] text-black font-bold text-xs uppercase tracking-widest shadow-xl cursor-pointer hover:scale-102 transition-all flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Save Promotions & Deals</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 

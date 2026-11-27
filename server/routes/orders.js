@@ -160,7 +160,35 @@ router.post('/', authenticateToken, async (req, res) => {
     const freeThreshold = Number(settings.freeShippingThreshold || settings.freeDeliveryThreshold || 999999999);
     const standardFee = Number(settings.deliveryFee || settings.shippingFee || 500);
     const deliveryFee = isPickup ? 0 : (subtotal >= freeThreshold ? 0 : standardFee);
-    const finalTotal = subtotal + deliveryFee;
+
+    // Compute promotional deal discount (e.g. Buy X Get Y Free)
+    let serverDealDiscount = 0;
+    const deal = settings.promotionalDeal;
+    if (deal && deal.enabled) {
+      const buyQty = Math.max(1, parseInt(deal.buyQty, 10) || 2);
+      const freeQty = Math.max(1, parseInt(deal.freeQty, 10) || 1);
+      const groupSize = buyQty + freeQty;
+      const totalUnits = validatedItems.reduce((acc, it) => acc + it.quantity, 0);
+
+      if (totalUnits >= groupSize) {
+        const eligibleGroups = Math.floor(totalUnits / groupSize);
+        const freeCount = eligibleGroups * freeQty;
+
+        const unitPrices = [];
+        validatedItems.forEach(it => {
+          for (let i = 0; i < it.quantity; i++) {
+            unitPrices.push(Number(it.price) || 0);
+          }
+        });
+        unitPrices.sort((a, b) => a - b);
+
+        for (let i = 0; i < Math.min(freeCount, unitPrices.length); i++) {
+          serverDealDiscount += unitPrices[i];
+        }
+      }
+    }
+
+    const finalTotal = Math.max(0, subtotal - serverDealDiscount) + deliveryFee;
 
     // Collision-resistant unique Order ID (e.g. SCNT-K8Z2-3F9A)
     const timeCode = Date.now().toString(36).toUpperCase().slice(-4);
@@ -182,6 +210,8 @@ router.post('/', authenticateToken, async (req, res) => {
       items: validatedItems,
       fulfillmentType: isPickup ? 'pickup' : 'delivery',
       subtotal,
+      dealDiscount: serverDealDiscount,
+      dealTitle: deal && deal.enabled ? deal.title : '',
       deliveryFee,
       finalTotal,
       paymentMethod: 'bank_transfer',

@@ -141,9 +141,7 @@ router.get('/featured', async (req, res) => {
 router.get('/offers', async (req, res) => {
   try {
     const products = db.getProducts();
-    const offers = products.filter(p =>
-      (p.variants || []).some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price))
-    );
+    const offers = products.filter(p => p.isSpecialOffer === true);
     res.json(offers);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching fragrance offers.' });
@@ -237,6 +235,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       gender: gender || 'unisex',
       scentFamily: scentFamily || 'Oriental',
       isFeatured: Boolean(isFeatured),
+      isSpecialOffer: Boolean(req.body.isSpecialOffer),
       badge: badge ? badge.trim() : '',
       salesCount: 0,
       notes: notes || { top: [], heart: [], base: [] },
@@ -282,6 +281,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (gender !== undefined) updates.gender = gender;
     if (scentFamily !== undefined) updates.scentFamily = scentFamily;
     if (isFeatured !== undefined) updates.isFeatured = Boolean(isFeatured);
+    if (req.body.isSpecialOffer !== undefined) updates.isSpecialOffer = Boolean(req.body.isSpecialOffer);
     if (badge !== undefined) updates.badge = badge.trim();
     if (notes !== undefined) updates.notes = notes;
     if (images !== undefined) updates.images = images;

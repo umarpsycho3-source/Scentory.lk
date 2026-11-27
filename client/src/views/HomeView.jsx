@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, MessageSquare, Plus, Camera, Heart, Tag, Percent } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, MessageSquare, Plus, Camera, Heart, Tag, Percent, Gift } from 'lucide-react';
 import HeroPerfumeVideo from '../components/HeroPerfumeVideo';
 import AddReviewModal from '../components/AddReviewModal';
 import { useFavourites } from '../context/FavouritesContext';
@@ -9,6 +9,16 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [offerProducts, setOfferProducts] = useState([]);
+  const [promotionalDeal, setPromotionalDeal] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scentory_settings');
+      if (cached) {
+        const s = JSON.parse(cached);
+        return s.promotionalDeal || null;
+      }
+    } catch (e) {}
+    return null;
+  });
   const [homeReviews, setHomeReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(5.0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -86,16 +96,18 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
         if (Array.isArray(featured)) setFeaturedProducts(featured);
         if (Array.isArray(trending)) setTrendingProducts(trending);
 
-        // Find all products that have variants with a discountPrice less than normal price
+        // Only show products where isSpecialOffer is explicitly ticked by store admin
         let discounted = [];
         if (Array.isArray(offersData) && offersData.length > 0) {
-          discounted = offersData;
+          discounted = offersData.filter(p => p.isSpecialOffer === true);
         } else if (Array.isArray(allProducts)) {
-          discounted = allProducts.filter(p =>
-            (p.variants || []).some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price))
-          );
+          discounted = allProducts.filter(p => p.isSpecialOffer === true);
         }
         setOfferProducts(discounted);
+
+        if (settingsData && settingsData.promotionalDeal) {
+          setPromotionalDeal(settingsData.promotionalDeal);
+        }
 
         if (reviewsData && reviewsData.reviews) {
           // Exactly 5 reviews on Home page as explicitly requested by user
@@ -218,6 +230,37 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
               <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
             </button>
           </div>
+
+          {/* Active Buy X Get Y Free Deal Banner */}
+          {promotionalDeal?.enabled && promotionalDeal.showBanner && (
+            <div className="mb-10 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-[#1c1407] via-[#1a0f19] to-[#12111d] border border-[#d4af37]/40 shadow-[0_0_30px_rgba(212,175,55,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4 text-center sm:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#d4af37] to-[#aa820a] flex items-center justify-center flex-shrink-0 text-black shadow-lg">
+                  <Gift className="w-6 h-6 animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-[#d4af37] text-black uppercase tracking-wider shadow">
+                      {promotionalDeal.badgeText || 'SPECIAL PROMOTION'}
+                    </span>
+                    <strong className="text-white text-base sm:text-lg font-serif-luxury font-bold tracking-wide">
+                      {promotionalDeal.title}
+                    </strong>
+                  </div>
+                  <p className="text-xs text-gray-300 mt-1 font-light leading-relaxed">
+                    {promotionalDeal.bannerText}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onExploreShop}
+                className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 cursor-pointer shadow-lg"
+              >
+                <span>Shop Fragrances</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {/* If there are offer products */}
           {offerProducts.length > 0 ? (

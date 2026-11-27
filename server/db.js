@@ -52,6 +52,16 @@ function getInitialData() {
         swiftCode: 'CCEYLKX',
         instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
       },
+      promotionalDeal: {
+        enabled: false,
+        title: 'Buy 2 Get 1 Free',
+        dealType: 'buy_x_get_y_free',
+        buyQty: 2,
+        freeQty: 1,
+        bannerText: '✨ SPECIAL PROMOTION: Buy 2 perfumes, get 1 free automatically at checkout!',
+        badgeText: 'BUY 2 GET 1 FREE',
+        showBanner: true
+      },
       heroBadge: "WE'RE LIVE • SCENTORY.LK",
       heroTitle: "A New Destination For Your",
       heroSubtitle: "Signature Scent.",
@@ -165,7 +175,8 @@ class Database {
           this.data.settings = {
             ...getInitialData().settings,
             ...cleanSettings,
-            bankDetails: { ...CANONICAL_BANK_DETAILS }
+            bankDetails: { ...CANONICAL_BANK_DETAILS },
+            promotionalDeal: { ...getInitialData().settings.promotionalDeal, ...(cleanSettings.promotionalDeal || {}) }
           };
           if (!cleanSettings.bankDetails || cleanSettings.bankDetails.accountNumber !== CANONICAL_BANK_DETAILS.accountNumber) {
             await this.mongoDb.collection('store_settings').updateOne(

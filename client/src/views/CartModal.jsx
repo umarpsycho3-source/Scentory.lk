@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, Gift, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function CartModal({ onCheckout, onContinueShopping }) {
@@ -10,6 +10,10 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
     updateQuantity,
     removeFromCart,
     subtotal,
+    dealDiscount,
+    freeItemsCount,
+    itemsNeeded,
+    promotionalDeal,
     deliveryFee,
     finalTotal
   } = useCart();
@@ -131,11 +135,33 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
           {/* Footer & Checkout Action */}
           {cart.length > 0 && (
             <div className="p-6 bg-[#121218] border-t border-[#d4af37]/20 space-y-4">
+              {/* Promotional Deal Notification in Cart */}
+              {dealDiscount > 0 ? (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-[#121218] border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between shadow-lg">
+                  <span className="flex items-center gap-2 font-bold">
+                    <Gift className="w-4 h-4 text-emerald-400 animate-bounce flex-shrink-0" />
+                    <span>{promotionalDeal?.title || 'Bundle Promotion'} Applied! ({freeItemsCount} Free)</span>
+                  </span>
+                  <span className="font-mono font-bold text-emerald-300 whitespace-nowrap">-Rs. {dealDiscount.toLocaleString()}</span>
+                </div>
+              ) : promotionalDeal?.enabled && itemsNeeded > 0 ? (
+                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span>Add <strong>{itemsNeeded}</strong> more fragrance to activate <strong>{promotionalDeal.title}</strong>!</span>
+                </div>
+              ) : null}
+
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between text-gray-400">
                   <span>Subtotal</span>
                   <span className="text-white">Rs. {subtotal.toLocaleString()}</span>
                 </div>
+                {dealDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-400 font-semibold">
+                    <span>Promotion Discount ({promotionalDeal?.title})</span>
+                    <span>-Rs. {dealDiscount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-400">
                   <span>Estimated Delivery</span>
                   <span className={deliveryFee === 0 ? "text-emerald-400 font-semibold" : "text-white"}>

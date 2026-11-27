@@ -14,6 +14,50 @@ export const CartProvider = ({ children }) => {
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [promotionalDeal, setPromotionalDeal] = useState(() => {
+    try {
+      const saved = localStorage.getItem('scentory_settings');
+      if (saved) {
+        const s = JSON.parse(saved);
+        return s.promotionalDeal || null;
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  useEffect(() => {
+    // Load promotional deal from store settings
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.promotionalDeal) {
+          setPromotionalDeal(data.promotionalDeal);
+        }
+      })
+      .catch(() => {});
+
+    const handleSettingsUpdate = (e) => {
+      if (e.detail?.promotionalDeal) {
+        setPromotionalDeal(e.detail.promotionalDeal);
+      }
+    };
+    window.addEventListener('scentory-settings-updated', handleSettingsUpdate);
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('scentory_channel');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'SETTINGS_UPDATED' && event.data.settings?.promotionalDeal) {
+          setPromotionalDeal(event.data.settings.promotionalDeal);
+        }
+      };
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('scentory-settings-updated', handleSettingsUpdate);
+      if (channel) channel.close();
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('scentory_cart', JSON.stringify(cart));
@@ -87,10 +131,49 @@ export const CartProvider = ({ children }) => {
     setCart([]);
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const deliveryFee = cart.length === 0 ? 0 : 500;
-  const finalTotal = subtotal + deliveryFee;
+  const rawSubtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const totalItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  let dealDiscount = 0;
+  let freeItemsCount = 0;
+  let itemsNeeded = 0;
+
+  if (promotionalDeal && promotionalDeal.enabled) {
+    const buyQty = Math.max(1, parseInt(promotionalDeal.buyQty, 10) || 2);
+    const freeQty = Math.max(1, parseInt(promotionalDeal.freeQty, 10) || 1);
+    const groupSize = buyQty + freeQty;
+
+    if (totalItemCount >= groupSize) {
+      const eligibleGroups = Math.floor(totalItemCount / groupSize);
+      freeItemsCount = eligibleGroups * freeQty;
+
+      // Expand all units in cart sorted ascending by unit price (cheapest items are free)
+      const unitPrices = [];
+      cart.forEach(item => {
+        for (let i = 0; i < item.quantity; i++) {
+          unitPrices.push(Number(item.price) || 0);
+        }
+      });
+      unitPrices.sort((a, b) => a - b);
+
+      for (let i = 0; i < Math.min(freeItemsCount, unitPrices.length); i++) {
+        dealDiscount += unitPrices[i];
+      }
+    }
+
+    // Items needed to activate next free item tier
+    const remainder = totalItemCount % groupSize;
+    if (remainder === 0 && totalItemCount > 0) {
+      itemsNeeded = buyQty;
+    } else {
+      itemsNeeded = groupSize - remainder;
+    }
+  }
+
+  const subtotal = rawSubtotal;
+  const discountedSubtotal = Math.max(0, rawSubtotal - dealDiscount);
+  const deliveryFee = cart.length === 0 ? 0 : 500;
+  const finalTotal = discountedSubtotal + deliveryFee;
 
   return (
     <CartContext.Provider value={{
@@ -102,6 +185,11 @@ export const CartProvider = ({ children }) => {
       isCartOpen,
       setIsCartOpen,
       subtotal,
+      dealDiscount,
+      discountedSubtotal,
+      freeItemsCount,
+      itemsNeeded,
+      promotionalDeal,
       deliveryFee,
       finalTotal,
       totalItemCount,
