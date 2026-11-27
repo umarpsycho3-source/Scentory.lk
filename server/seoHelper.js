@@ -23,22 +23,16 @@ function generateProductSchema(product, baseUrl = 'https://scentory-lk.vercel.ap
   const totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
   const inStock = totalStock > 0 || (variants[0].stock !== 0);
 
-  // Schema.org recommends http/https image URLs over data: base64 URIs for Rich Snippets
+  // Real product image URL pointing to the actual product image from database
   let imageList = [];
   if (Array.isArray(product.images) && product.images.length > 0) {
-    imageList = product.images.map((img, idx) => {
-      if (typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://'))) {
-        return img;
-      }
-      if (typeof img === 'string' && img.startsWith('/')) {
-        return `${baseUrl}${img}`;
-      }
-      // If image is a base64 string, fallback to brand logo for search crawlers
-      return `${baseUrl}/brand-logo.png`;
-    });
-  }
-  if (!imageList.length) {
-    imageList = [`${baseUrl}/brand-logo.png`];
+    if (typeof product.images[0] === 'string' && (product.images[0].startsWith('http://') || product.images[0].startsWith('https://'))) {
+      imageList = [product.images[0]];
+    } else {
+      imageList = [`${baseUrl}/uploads/products/${product.id}.jpg`];
+    }
+  } else {
+    imageList = [`${baseUrl}/uploads/products/${product.id}.jpg`];
   }
 
   const family = product.scentFamily ? ` (${product.scentFamily})` : '';
@@ -157,10 +151,9 @@ function injectProductMeta(htmlTemplate, product, baseUrl = 'https://scentory-lk
     ? product.description.trim()
     : `Buy authentic ${product.name}${family} luxury extrait de parfum decant in Sri Lanka. 100% genuine with islandwide delivery.`;
   const canonical = `${baseUrl}/product/${product.id}`;
-  const ogImage = `${baseUrl}/brand-logo.png`;
-
   const schemaObj = generateProductSchema(product, baseUrl);
   const schemaJson = JSON.stringify(schemaObj, null, 2);
+  const ogImage = `${baseUrl}/uploads/products/${product.id}.jpg`;
 
   let output = htmlTemplate;
 
@@ -178,6 +171,10 @@ function injectProductMeta(htmlTemplate, product, baseUrl = 'https://scentory-lk
   // Replace Canonical & URL
   output = output.replace(/<link rel="canonical" href=".*?" \/>/i, `<link rel="canonical" href="${canonical}" />`);
   output = output.replace(/<meta property="og:url" content=".*?" \/>/i, `<meta property="og:url" content="${canonical}" />`);
+
+  // Replace og:image & twitter:image with real product image
+  output = output.replace(/<meta property="og:image" content=".*?" \/>/i, `<meta property="og:image" content="${ogImage}" />`);
+  output = output.replace(/<meta name="twitter:image" content=".*?" \/>/i, `<meta name="twitter:image" content="${ogImage}" />`);
 
   // Replace JSON-LD schema
   output = output.replace(

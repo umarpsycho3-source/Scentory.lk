@@ -59,6 +59,54 @@ const receiptsDir = path.join(uploadsDir, 'receipts');
   }
 });
 
+// Dynamic endpoint for product images: checks uploads/products, client/dist/uploads/products, or decodes from MongoDB
+app.get('/uploads/products/:filename', async (req, res, next) => {
+  const filename = req.params.filename;
+  const p1 = path.join(productsDir, filename);
+  if (fs.existsSync(p1)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    return res.sendFile(p1);
+  }
+
+  const p2 = path.join(__dirname, '..', 'client', 'dist', 'uploads', 'products', filename);
+  if (fs.existsSync(p2)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    return res.sendFile(p2);
+  }
+
+  const p3 = path.join(__dirname, '..', 'client', 'public', 'uploads', 'products', filename);
+  if (fs.existsSync(p3)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    return res.sendFile(p3);
+  }
+
+  // Fallback: Query database and decode image buffer
+  const productId = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+  try {
+    if (db && typeof db.ensureConnected === 'function') {
+      await db.ensureConnected();
+      const p = db.getProductById(productId);
+      if (p && Array.isArray(p.images) && p.images[0]) {
+        const raw = p.images[0];
+        if (typeof raw === 'string' && raw.startsWith('data:image/')) {
+          const base64Data = raw.replace(/^data:image\/\w+;base64,/, '');
+          const buf = Buffer.from(base64Data, 'base64');
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+          return res.status(200).send(buf);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Dynamic image error:', err.message);
+  }
+
+  next();
+});
+
 // Serve uploaded media with caching
 app.use('/uploads', express.static(uploadsDir, {
   maxAge: '7d',

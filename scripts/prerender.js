@@ -65,6 +65,27 @@ async function runPrerender() {
   for (const product of products) {
     if (!product || !product.id) continue;
 
+    // Extract real product image from database and save to uploads/products
+    if (Array.isArray(product.images) && product.images[0]) {
+      const rawImg = product.images[0];
+      if (typeof rawImg === 'string' && rawImg.startsWith('data:image/')) {
+        const base64Data = rawImg.replace(/^data:image\/\w+;base64,/, '');
+        const imgBuffer = Buffer.from(base64Data, 'base64');
+
+        const distUploadsDir = path.join(distDir, 'uploads', 'products');
+        if (!fs.existsSync(distUploadsDir)) fs.mkdirSync(distUploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(distUploadsDir, `${product.id}.jpg`), imgBuffer);
+
+        const publicUploadsDir = path.join(__dirname, '..', 'client', 'public', 'uploads', 'products');
+        if (!fs.existsSync(publicUploadsDir)) fs.mkdirSync(publicUploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(publicUploadsDir, `${product.id}.jpg`), imgBuffer);
+
+        const serverUploadsDir = path.join(__dirname, '..', 'server', 'uploads', 'products');
+        if (!fs.existsSync(serverUploadsDir)) fs.mkdirSync(serverUploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(serverUploadsDir, `${product.id}.jpg`), imgBuffer);
+      }
+    }
+
     const productHtml = injectProductMeta(baseHtml, product, baseUrl);
     const prodDir = path.join(distDir, 'product', product.id);
 

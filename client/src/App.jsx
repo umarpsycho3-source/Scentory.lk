@@ -161,9 +161,8 @@ function MainApp() {
         ? `${selectedProduct.description.slice(0, 150)}... Authentic perfume decants in Sri Lanka.`
         : `Buy authentic ${selectedProduct.name}${family} luxury extrait de parfum decant in Sri Lanka. 100% genuine with islandwide delivery.`;
       canonical = `${baseUrl}/product/${selectedProduct.id}`;
-      if (selectedProduct.images && selectedProduct.images[0]) {
-        ogImage = selectedProduct.images[0].startsWith('http') ? selectedProduct.images[0] : `${baseUrl}${selectedProduct.images[0]}`;
-      }
+      const productImageUrl = `${baseUrl}/uploads/products/${selectedProduct.id}.jpg`;
+      ogImage = productImageUrl;
 
       const variants = Array.isArray(selectedProduct.variants) && selectedProduct.variants.length > 0
         ? selectedProduct.variants
@@ -179,7 +178,7 @@ function MainApp() {
             '@type': 'Product',
             '@id': `${baseUrl}/product/${selectedProduct.id}#product`,
             'name': selectedProduct.name,
-            'image': selectedProduct.images && selectedProduct.images.length ? selectedProduct.images : [ogImage],
+            'image': [productImageUrl],
             'description': description,
             'sku': selectedProduct.id,
             'brand': {
