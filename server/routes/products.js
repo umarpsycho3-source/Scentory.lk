@@ -141,25 +141,12 @@ router.get('/featured', async (req, res) => {
 router.get('/offers', async (req, res) => {
   try {
     const products = db.getProducts();
-    const settings = db.getSettings();
-    const deal = settings?.promotionalDeal;
 
     const offers = products.filter(p => {
-      // 1. Explicitly enabled by admin
-      if (p.isSpecialOffer === true) return true;
-      // 2. Explicitly disabled by admin
-      if (p.isSpecialOffer === false) return false;
-      // 3. In active promotional deal
-      if (deal && deal.enabled) {
-        if (deal.appliesTo === 'specific' && Array.isArray(deal.applicableProductIds) && deal.applicableProductIds.map(String).includes(String(p.id))) {
-          return true;
-        }
-      }
-      // 4. Products with variant discount pricing
-      const hasDiscount = Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
-      if (hasDiscount) return true;
-
-      return false;
+      // Must be explicitly enabled by admin as a special offer
+      if (p.isSpecialOffer !== true) return false;
+      // Must have at least one variant with a valid discount price lower than regular price
+      return Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
     });
 
     res.json(offers);
@@ -221,8 +208,9 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
         return res.status(400).json({ message: `Variant "${sizeName}" price must be a valid positive number.` });
       }
 
+      const isSpecialOfferActive = Boolean(req.body.isSpecialOffer);
       let discountPrice = null;
-      if (v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
+      if (isSpecialOfferActive && v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
         discountPrice = Number(v.discountPrice);
         if (isNaN(discountPrice) || discountPrice <= 0 || !isFinite(discountPrice)) {
           return res.status(400).json({ message: `Variant "${sizeName}" discount price must be a positive number.` });
@@ -326,8 +314,9 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
           return res.status(400).json({ message: `Variant "${sizeName}" price must be a valid positive number.` });
         }
 
+        const isOfferActive = updates.isSpecialOffer !== undefined ? updates.isSpecialOffer : Boolean(existing.isSpecialOffer);
         let discountPrice = null;
-        if (v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
+        if (isOfferActive && v.discountPrice !== undefined && v.discountPrice !== null && v.discountPrice !== '') {
           discountPrice = Number(v.discountPrice);
           if (isNaN(discountPrice) || discountPrice <= 0 || !isFinite(discountPrice)) {
             return res.status(400).json({ message: `Variant "${sizeName}" discount price must be a positive number.` });

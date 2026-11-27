@@ -124,25 +124,15 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           setDealProducts([]);
         }
 
-        // Populate offer products matching:
+        // Populate offer products strictly matching:
         // 1. Explicitly enabled isSpecialOffer === true
-        // 2. Has discounted variant pricing (unless explicitly marked with isSpecialOffer === false)
+        // 2. Has discounted variant pricing lower than regular price
         let discounted = [];
         if (Array.isArray(offersData) && offersData.length > 0) {
-          discounted = offersData;
+          discounted = offersData.filter(p => p.isSpecialOffer === true && Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price)));
         } else if (Array.isArray(allProducts) && allProducts.length > 0) {
-          discounted = allProducts.filter(p => {
-            if (p.isSpecialOffer === true) return true;
-            if (p.isSpecialOffer === false) return false;
-            return Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
-          });
+          discounted = allProducts.filter(p => p.isSpecialOffer === true && Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price)));
         }
-
-        // If no products meet discounted criteria yet, display featured products as fallback
-        if (discounted.length === 0 && Array.isArray(allProducts) && allProducts.length > 0) {
-          discounted = allProducts.slice(0, 4);
-        }
-
         setOfferProducts(discounted);
 
         if (reviewsData && reviewsData.reviews) {
@@ -237,7 +227,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
       </section>
 
       {/* 1. DEDICATED DIVIDED SECTION: BUY X GET Y FREE PROMOTIONAL DEALS (UNDER HERO, ABOVE EXCLUSIVE OFFERS) */}
-      {promotionalDeal?.enabled && dealProducts.length > 0 && (
+      {promotionalDeal?.enabled && (
         <section id="promotional-deals-section" className="py-12 sm:py-16 bg-gradient-to-b from-[#09150e] via-[#0d1419] to-[#0c0c11] border-b border-emerald-500/25 relative overflow-hidden">
           {/* Emerald & Gold Ambient Glows */}
           <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[130px] pointer-events-none" />
@@ -264,124 +254,130 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
 
               <button
                 onClick={() => onExploreShop({ filter: 'deals' })}
-                className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-emerald-300 hover:text-white group cursor-pointer flex-shrink-0"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-lg cursor-pointer flex-shrink-0"
               >
-                <span>View All In Store ({dealProducts.length})</span>
-                <ChevronRight className="w-4 h-4 text-emerald-400 transition-transform group-hover:translate-x-1" />
+                <span>Shop Fragrances</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Small Compact Luxury Product Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
-              {dealProducts.map((product) => {
-                const lowestPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
-                const isFav = isFavourite(product.id);
-
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => onSelectProduct(product)}
-                    className="group glass-panel rounded-xl sm:rounded-2xl overflow-hidden border border-emerald-500/30 hover:border-[#d4af37] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 shadow-lg hover:shadow-emerald-950/50 bg-[#0d1214] relative"
-                  >
-                    {/* Compact Image Container */}
-                    <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
-                      <img
-                        src={product.images?.[0]}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-106"
-                      />
-
-                      {/* Top Deal Pill */}
-                      <div className="absolute top-2 left-2 z-20">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[8px] sm:text-[9px] uppercase tracking-wider shadow flex items-center gap-1">
-                          <Gift className="w-2.5 h-2.5" />
-                          <span>ELIGIBLE</span>
-                        </span>
-                      </div>
-
-                      {/* Favourite Heart */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavourite(product.id);
-                        }}
-                        className="absolute top-2 right-2 z-20 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow cursor-pointer"
-                      >
-                        <Heart className={`w-3 h-3 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
-                      </button>
-
-                      {/* Bottom Price Pill */}
-                      <div className="absolute bottom-1.5 inset-x-1.5 p-1 sm:p-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-between text-[8px] sm:text-[10px]">
-                        <span className="text-gray-400 uppercase">From</span>
-                        <span className="font-serif-luxury font-bold text-emerald-300 font-mono">
-                          Rs. {lowestPrice.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Compact Details */}
-                    <div className="p-2 sm:p-3 flex-1 flex flex-col justify-between">
-                      <div>
-                        <span className="text-[8px] sm:text-[9px] text-[#d4af37] uppercase tracking-wider block truncate">
-                          {product.scentFamily}
-                        </span>
-                        <h4 className="font-serif-luxury text-xs sm:text-sm font-bold text-white group-hover:text-[#d4af37] transition-colors truncate leading-tight mt-0.5">
-                          {product.name}
-                        </h4>
-                      </div>
-
-                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-[8px] sm:text-[9px] text-gray-400">
-                          {(product.variants || []).length} sizes
-                        </span>
-                        <span className="text-[8px] sm:text-[10px] font-bold text-[#fcf6ba] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                          <span>Claim</span>
-                          <ArrowRight className="w-2.5 h-2.5 text-[#d4af37]" />
-                        </span>
-                      </div>
+            {/* Client Promotional Deal Poster Showcase Card */}
+            <div className="glass-panel rounded-3xl border border-emerald-500/30 overflow-hidden shadow-2xl bg-gradient-to-br from-[#0b1410] via-[#0d1214] to-[#121118]">
+              {promotionalDeal.imageUrl ? (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-4 sm:p-8">
+                  {/* Poster Image */}
+                  <div className="lg:col-span-7 overflow-hidden rounded-2xl border border-[#d4af37]/30 shadow-2xl relative group bg-black/40 flex items-center justify-center">
+                    <img
+                      src={promotionalDeal.imageUrl}
+                      alt={promotionalDeal.title || 'Promotional Offer'}
+                      className="w-full max-h-[460px] object-contain transition-transform duration-700 group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-emerald-500/50 text-emerald-300 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg">
+                        <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{promotionalDeal.badgeText || 'SPECIAL OFFER'}</span>
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Right Content / CTA */}
+                  <div className="lg:col-span-5 space-y-5 p-2 sm:p-4 flex flex-col justify-center">
+                    <div>
+                      <span className="text-[10px] sm:text-xs text-[#d4af37] uppercase tracking-[0.2em] font-semibold block mb-1">
+                        LIMITED TIME LUXURY DEAL
+                      </span>
+                      <h3 className="font-serif-luxury text-2xl sm:text-3xl font-bold text-white leading-tight">
+                        {promotionalDeal.title || 'Exclusive Fragrance Promotion'}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-300 mt-2 font-light leading-relaxed">
+                        {promotionalDeal.bannerText}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-black/40 border border-emerald-500/20 space-y-2.5">
+                      <div className="flex items-center gap-2.5 text-xs text-gray-200">
+                        <Sparkles className="w-4 h-4 text-[#d4af37] flex-shrink-0" />
+                        <span>Add any <strong>{(Number(promotionalDeal.buyQty || 2) + Number(promotionalDeal.freeQty || 1))} bottles</strong> to cart</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-xs text-gray-200">
+                        <Gift className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span><strong>{Number(promotionalDeal.freeQty || 1)} lowest-priced bottle</strong> is automatically <strong>Rs. 0 (FREE)</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-xs text-gray-200">
+                        <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span>Real-time mathematical savings applied at checkout</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => onExploreShop({ filter: 'deals' })}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-[0_0_25px_rgba(212,175,55,0.3)] hover:scale-[1.02] cursor-pointer"
+                    >
+                      <span>Shop Fragrances & Claim Deal</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Showcase when image is not yet uploaded */
+                <div className="p-8 sm:p-12 text-center max-w-3xl mx-auto space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#d4af37]/20 to-emerald-500/20 border border-[#d4af37]/40 flex items-center justify-center mx-auto text-[#d4af37] shadow-lg">
+                    <Gift className="w-8 h-8 text-emerald-400 animate-pulse" />
+                  </div>
+                  <h3 className="font-serif-luxury text-2xl sm:text-3xl font-bold text-white">
+                    {promotionalDeal.title || 'Storewide Fragrance Promotion'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-300 max-w-xl mx-auto font-light leading-relaxed">
+                    {promotionalDeal.bannerText}
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      onClick={() => onExploreShop({ filter: 'deals' })}
+                      className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-lg cursor-pointer"
+                    >
+                      <span>Shop Fragrances Now</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
       )}
 
       {/* 2. EXCLUSIVE FRAGRANCE PROMOTIONS (SPECIAL OFFERS & VARIANT DISCOUNTS) */}
-      <section id="special-offers-section" className="py-14 sm:py-20 bg-gradient-to-b from-[#120f0a]/90 via-[#0d0d14] to-[#0c0c11] border-b border-[#d4af37]/25 relative overflow-hidden">
-        {/* Golden ambient backdrops */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#d4af37]/8 rounded-full blur-[130px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-rose-500/5 rounded-full blur-[140px] pointer-events-none" />
+      {offerProducts.length > 0 && (
+        <section id="special-offers-section" className="py-14 sm:py-20 bg-gradient-to-b from-[#120f0a]/90 via-[#0d0d14] to-[#0c0c11] border-b border-[#d4af37]/25 relative overflow-hidden">
+          {/* Golden ambient backdrops */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#d4af37]/8 rounded-full blur-[130px] pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-rose-500/5 rounded-full blur-[140px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-950/60 border border-rose-500/40 text-rose-300 text-[10px] sm:text-xs uppercase tracking-[0.2em] font-semibold mb-3 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-                <Tag className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-                <span>Special Offers & Variant Discounts</span>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-950/60 border border-rose-500/40 text-rose-300 text-[10px] sm:text-xs uppercase tracking-[0.2em] font-semibold mb-3 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                  <Tag className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                  <span>Special Offers & Variant Discounts</span>
+                </div>
+                <h2 className="font-serif-luxury text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
+                  Exclusive Fragrance <span className="gold-text-gradient">Promotions</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-300 mt-2 max-w-xl font-light">
+                  Limited-time discounted prices on luxury extrait de parfum atomizers and flacons. Handcrafted savings on our most distinguished scents.
+                </p>
               </div>
-              <h2 className="font-serif-luxury text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
-                Exclusive Fragrance <span className="gold-text-gradient">Promotions</span>
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-300 mt-2 max-w-xl font-light">
-                Limited-time discounted prices on luxury extrait de parfum atomizers and flacons. Handcrafted savings on our most distinguished scents.
-              </p>
+
+              <button
+                onClick={onExploreShop}
+                className="mt-4 md:mt-0 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[#f3e5ab] hover:text-white group cursor-pointer"
+              >
+                <span>Explore All Offers</span>
+                <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
+              </button>
             </div>
 
-            <button
-              onClick={onExploreShop}
-              className="mt-4 md:mt-0 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[#f3e5ab] hover:text-white group cursor-pointer"
-            >
-              <span>Explore All Offers</span>
-              <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-
-          {/* If there are offer products */}
-          {offerProducts.length > 0 ? (
             <div id="special-offers-grid" className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 scroll-mt-24">
               {offerProducts.map((product) => {
                 const discountedVariants = (product.variants || []).filter(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
@@ -495,29 +491,9 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                 );
               })}
             </div>
-          ) : (
-            /* When admin is preparing new discounted variants, show inviting promotional banner */
-            <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-[#d4af37]/30 bg-[#0d0d14]/90 text-center max-w-2xl mx-auto shadow-2xl relative overflow-hidden">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#d4af37]/20 to-rose-500/20 border border-[#d4af37]/40 flex items-center justify-center mx-auto mb-4 text-[#d4af37]">
-                <Tag className="w-6 h-6 text-rose-400 animate-pulse" />
-              </div>
-              <h3 className="font-serif-luxury text-xl sm:text-2xl font-bold text-white">
-                Exclusive Promotional Pricing Active
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-300 mt-2 max-w-lg mx-auto font-light leading-relaxed">
-                Variant discounts configured in the admin panel appear live here. Browse our complete artisan collection for special travel decant and flacon prices.
-              </p>
-              <button
-                onClick={onExploreShop}
-                className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-lg cursor-pointer"
-              >
-                <span>Browse Collection</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {/* FEATURED MASTERPIECES SECTION */}
       <section id="featured-section" className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

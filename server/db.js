@@ -62,6 +62,7 @@ function getInitialData() {
         freeQty: 1,
         bannerText: '✨ SPECIAL PROMOTION: Buy 2 perfumes, get 1 free automatically at checkout!',
         badgeText: 'BUY 2 GET 1 FREE',
+        imageUrl: '',
         showBanner: true
       },
       heroBadge: "WE'RE LIVE • SCENTORY.LK",
@@ -181,6 +182,7 @@ class Database {
             promotionalDeal: {
               ...getInitialData().settings.promotionalDeal,
               ...(cleanSettings.promotionalDeal || {}),
+              imageUrl: cleanSettings.promotionalDeal?.imageUrl || '',
               applicableProductIds: Array.isArray(cleanSettings.promotionalDeal?.applicableProductIds)
                 ? cleanSettings.promotionalDeal.applicableProductIds
                 : []

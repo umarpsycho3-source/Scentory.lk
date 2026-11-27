@@ -148,6 +148,8 @@ export default function AdminView({ onBackToShop }) {
   const [productForm, setProductForm] = useState(initialProductForm);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [dealImageUrlInput, setDealImageUrlInput] = useState('');
+  const [uploadingDealImage, setUploadingDealImage] = useState(false);
   const [dealProductSearch, setDealProductSearch] = useState('');
 
   // Live Auto-Refresh & Auto-Sync State
@@ -754,6 +756,19 @@ export default function AdminView({ onBackToShop }) {
       const payload = { ...productForm };
       delete payload._notesDraft;
 
+      // When Special Offer is disabled, variants cannot have discount prices
+      if (!payload.isSpecialOffer) {
+        payload.variants = (payload.variants || []).map(v => ({
+          ...v,
+          discountPrice: null
+        }));
+      } else {
+        payload.variants = (payload.variants || []).map(v => ({
+          ...v,
+          discountPrice: v.discountPrice !== '' && v.discountPrice != null && Number(v.discountPrice) > 0 ? Number(v.discountPrice) : null
+        }));
+      }
+
       if (!payload.name || !payload.name.trim()) {
         alert('Please enter a fragrance title.');
         return;
@@ -850,6 +865,56 @@ export default function AdminView({ onBackToShop }) {
     setProductForm(prev => ({
       ...prev,
       images: prev.images.filter((_, idx) => idx !== indexToRemove)
+    }));
+  };
+
+  // Promotional Deal Poster / Flyer Image Handlers
+  const handleDealImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingDealImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSettings(prev => ({
+          ...prev,
+          promotionalDeal: {
+            ...(prev?.promotionalDeal || {}),
+            imageUrl: reader.result
+          }
+        }));
+        setUploadingDealImage(false);
+      };
+      reader.onerror = () => {
+        alert('Failed to read poster image file.');
+        setUploadingDealImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      alert(err.message || 'Error processing deal poster image.');
+      setUploadingDealImage(false);
+    }
+  };
+
+  const handleAddDealImageUrl = () => {
+    if (!dealImageUrlInput.trim()) return;
+    setSettings(prev => ({
+      ...prev,
+      promotionalDeal: {
+        ...(prev?.promotionalDeal || {}),
+        imageUrl: dealImageUrlInput.trim()
+      }
+    }));
+    setDealImageUrlInput('');
+  };
+
+  const handleRemoveDealImage = () => {
+    setSettings(prev => ({
+      ...prev,
+      promotionalDeal: {
+        ...(prev?.promotionalDeal || {}),
+        imageUrl: ''
+      }
     }));
   };
 
@@ -3065,7 +3130,16 @@ export default function AdminView({ onBackToShop }) {
                             <input
                               type="checkbox"
                               checked={Boolean(productForm.isSpecialOffer)}
-                              onChange={(e) => setProductForm({ ...productForm, isSpecialOffer: e.target.checked })}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setProductForm(prev => ({
+                                  ...prev,
+                                  isSpecialOffer: checked,
+                                  variants: !checked
+                                    ? prev.variants.map(v => ({ ...v, discountPrice: null }))
+                                    : prev.variants
+                                }));
+                              }}
                               className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 accent-rose-500 cursor-pointer"
                             />
                             <span className="font-semibold">Display in Special Offers Section</span>
@@ -3206,13 +3280,26 @@ export default function AdminView({ onBackToShop }) {
                               </div>
 
                               <div>
-                                <span className="text-[9px] text-gray-400 uppercase block">Discount Price (LKR)</span>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-[9px] text-gray-400 uppercase block">Discount Price (LKR)</span>
+                                  {!productForm.isSpecialOffer && (
+                                    <span className="text-[8px] text-amber-400/90 font-mono font-semibold flex items-center gap-0.5" title="Field is locked. Tick 'Display in Special Offers Section' above to unlock.">
+                                      🔒 Locked
+                                    </span>
+                                  )}
+                                </div>
                                 <input
                                   type="number"
-                                  value={v.discountPrice ?? ''}
+                                  disabled={!productForm.isSpecialOffer}
+                                  value={productForm.isSpecialOffer ? (v.discountPrice ?? '') : ''}
                                   onChange={(e) => handleUpdateVariant(idx, 'discountPrice', e.target.value)}
-                                  placeholder="Optional sale price"
-                                  className="w-full px-2.5 py-1.5 rounded bg-[#181824] border border-white/10 text-rose-300 text-xs outline-none"
+                                  placeholder={productForm.isSpecialOffer ? "Optional sale price" : "Locked (Enable offer)"}
+                                  title={!productForm.isSpecialOffer ? "Tick 'Display in Special Offers Section' above to unlock this field" : "Discount price in LKR"}
+                                  className={`w-full px-2.5 py-1.5 rounded border text-xs outline-none transition-all ${
+                                    productForm.isSpecialOffer
+                                      ? 'bg-[#181824] border-rose-500/30 text-rose-300 focus:border-rose-400'
+                                      : 'bg-black/50 border-white/5 text-gray-500 cursor-not-allowed opacity-50'
+                                  }`}
                                 />
                               </div>
 
@@ -4212,7 +4299,75 @@ export default function AdminView({ onBackToShop }) {
                   </div>
                 </div>
 
-                {/* 5. LIVE CUSTOMER PREVIEW */}
+                {/* 5. PROMOTIONAL FLYER / POSTER IMAGE (FOR HOME PAGE SHOWCASE CARD) */}
+                <div className="p-5 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Upload className="w-4 h-4 text-[#d4af37]" />
+                      <span>Promotional Deal Poster / Flyer Graphic</span>
+                    </h4>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Upload a promotional banner image (e.g. Buy 2 Get 1 Free poster flyer) or paste an image URL. This graphic appears directly on the Home Page under the Hero section with a &quot;Shop Fragrances&quot; action button.
+                    </p>
+                  </div>
+
+                  {/* Paste URL */}
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={dealImageUrlInput}
+                      onChange={(e) => setDealImageUrlInput(e.target.value)}
+                      placeholder="Paste image URL (https://...)"
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-[#1b1b26] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDealImageUrl}
+                      className="px-4 py-2.5 rounded-xl bg-[#1f1f2e] hover:bg-[#d4af37] hover:text-black text-xs font-semibold text-gray-200 transition-colors cursor-pointer"
+                    >
+                      Set URL
+                    </button>
+                  </div>
+
+                  {/* Upload file */}
+                  <div className="flex items-center gap-3">
+                    <label className="px-4 py-2.5 rounded-xl border border-dashed border-[#d4af37]/50 hover:border-[#d4af37] text-xs font-medium text-[#f3e5ab] cursor-pointer bg-black/30 flex items-center gap-2 transition-all">
+                      <Upload className="w-4 h-4 text-[#d4af37]" />
+                      <span>{uploadingDealImage ? 'Uploading Poster...' : 'Upload Poster Image File from Computer'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleDealImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Poster preview if set */}
+                  {settings?.promotionalDeal?.imageUrl && (
+                    <div className="pt-2">
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1.5 font-semibold">
+                        Current Uploaded Poster Preview:
+                      </span>
+                      <div className="relative inline-block rounded-2xl overflow-hidden border border-[#d4af37]/40 shadow-xl bg-black max-w-sm group">
+                        <img
+                          src={settings.promotionalDeal.imageUrl}
+                          alt="Promotional Deal Poster"
+                          className="w-full max-h-60 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveDealImage}
+                          className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-black/85 text-red-400 hover:text-red-300 text-[10px] font-bold border border-red-500/30 flex items-center gap-1 cursor-pointer shadow-lg"
+                        >
+                          ✕ Remove Poster
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. LIVE CUSTOMER PREVIEW */}
                 <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-3">
                   <div className="flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
                     <span>Live Customer Preview (How it appears on website)</span>
@@ -4241,6 +4396,33 @@ export default function AdminView({ onBackToShop }) {
                       <p className="text-gray-300 text-[11px] mt-0.5 truncate">
                         {settings?.promotionalDeal?.bannerText || 'Add qualifying items to your bag to enjoy complimentary fragrances.'}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Home Page Showcase Card Preview */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-[#0b1410] via-[#0d1214] to-[#121118] border border-emerald-500/30 flex flex-col sm:flex-row items-center gap-4 text-xs">
+                    {settings?.promotionalDeal?.imageUrl ? (
+                      <img
+                        src={settings.promotionalDeal.imageUrl}
+                        alt="Deal Poster"
+                        className="w-24 h-24 object-contain rounded-lg border border-white/10 bg-black/50 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 text-emerald-400">
+                        <Gift className="w-8 h-8" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] text-[#d4af37] uppercase font-bold tracking-wider block">Home Showcase Preview</span>
+                      <h5 className="font-serif-luxury text-sm font-bold text-white truncate">
+                        {settings?.promotionalDeal?.title || 'Buy 2 Get 1 Free'}
+                      </h5>
+                      <p className="text-[11px] text-gray-300 line-clamp-2 mt-0.5">
+                        {settings?.promotionalDeal?.bannerText || 'Special promotion applied automatically at checkout.'}
+                      </p>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-full bg-[#d4af37] text-black font-bold text-[10px] uppercase tracking-wider flex-shrink-0">
+                      Shop Fragrances →
                     </div>
                   </div>
                 </div>
