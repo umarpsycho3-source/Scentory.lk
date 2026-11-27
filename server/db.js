@@ -17,6 +17,15 @@ function getMongoUri() {
   return process.env.MONGODB_URI || process.env.DATABASE_URL || null;
 }
 
+const CANONICAL_BANK_DETAILS = {
+  bankName: 'Commercial Bank',
+  accountName: 'S M Suhail',
+  accountNumber: '8021353334',
+  branch: 'Gampola Branch',
+  swiftCode: 'CCEYLKX',
+  instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
+};
+
 function getInitialData() {
   const salt = bcrypt.genSaltSync(10);
   const adminPasswordHash = bcrypt.hashSync('admin123', salt);
@@ -36,10 +45,10 @@ function getInitialData() {
       deliveryFee: 500,
       freeDeliveryThreshold: 999999999,
       bankDetails: {
-        bankName: 'Commercial Bank of Ceylon',
-        accountName: 'SCENTORY LUXURY PARFUMS (PVT) LTD',
-        accountNumber: '8012345678',
-        branch: 'Colombo 07 Branch',
+        bankName: 'Commercial Bank',
+        accountName: 'S M Suhail',
+        accountNumber: '8021353334',
+        branch: 'Gampola Branch',
         swiftCode: 'CCEYLKX',
         instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
       },
@@ -153,7 +162,17 @@ class Database {
         const sDoc = await this.mongoDb.collection('store_settings').findOne({ _id: 'general' });
         if (sDoc) {
           const { _id, ...cleanSettings } = sDoc;
-          this.data.settings = { ...getInitialData().settings, ...cleanSettings };
+          this.data.settings = {
+            ...getInitialData().settings,
+            ...cleanSettings,
+            bankDetails: { ...CANONICAL_BANK_DETAILS }
+          };
+          if (!cleanSettings.bankDetails || cleanSettings.bankDetails.accountNumber !== CANONICAL_BANK_DETAILS.accountNumber) {
+            await this.mongoDb.collection('store_settings').updateOne(
+              { _id: 'general' },
+              { $set: { bankDetails: CANONICAL_BANK_DETAILS } }
+            );
+          }
         } else {
           await this.mongoDb.collection('store_settings').updateOne(
             { _id: 'general' },
@@ -270,7 +289,11 @@ class Database {
 
   // ==================== SETTINGS ====================
   getSettings() {
-    return this.data.settings || {};
+    const s = this.data.settings || {};
+    return {
+      ...s,
+      bankDetails: { ...CANONICAL_BANK_DETAILS }
+    };
   }
 
   async updateSettings(updates) {
@@ -278,7 +301,9 @@ class Database {
     if (!this.mongoDb) {
       throw new Error('Database service unavailable for settings update.');
     }
-    this.data.settings = { ...this.data.settings, ...updates, updatedAt: new Date().toISOString() };
+    // Enforce locked canonical bank details
+    const cleanUpdates = { ...updates, bankDetails: { ...CANONICAL_BANK_DETAILS } };
+    this.data.settings = { ...this.data.settings, ...cleanUpdates, updatedAt: new Date().toISOString() };
     await this.mongoDb.collection('store_settings').updateOne(
       { _id: 'general' },
       { $set: this.data.settings },

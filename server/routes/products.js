@@ -137,6 +137,19 @@ router.get('/featured', async (req, res) => {
   }
 });
 
+// GET Special Offers / Discounted products
+router.get('/offers', async (req, res) => {
+  try {
+    const products = db.getProducts();
+    const offers = products.filter(p =>
+      (p.variants || []).some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price))
+    );
+    res.json(offers);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching fragrance offers.' });
+  }
+});
+
 // GET Single product
 router.get('/:id', async (req, res) => {
   const product = db.getProductById(req.params.id);

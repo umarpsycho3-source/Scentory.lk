@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, MessageSquare, Plus, Camera, Heart } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, MessageSquare, Plus, Camera, Heart, Tag, Percent } from 'lucide-react';
 import HeroPerfumeVideo from '../components/HeroPerfumeVideo';
 import AddReviewModal from '../components/AddReviewModal';
 import { useFavourites } from '../context/FavouritesContext';
@@ -8,6 +8,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
   const { toggleFavourite, isFavourite } = useFavourites();
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
+  const [offerProducts, setOfferProducts] = useState([]);
   const [homeReviews, setHomeReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(5.0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -76,12 +77,26 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
     Promise.all([
       fetch('/api/products/featured').then(res => res.json()).catch(() => []),
       fetch('/api/products/trending').then(res => res.json()).catch(() => []),
+      fetch('/api/products/offers').then(res => res.json()).catch(() => []),
+      fetch('/api/products').then(res => res.json()).catch(() => []),
       fetch('/api/reviews').then(res => res.json()).catch(() => ({ reviews: [] })),
       fetch('/api/settings').then(res => res.json()).catch(() => null)
     ])
-      .then(([featured, trending, reviewsData, settingsData]) => {
+      .then(([featured, trending, offersData, allProducts, reviewsData, settingsData]) => {
         if (Array.isArray(featured)) setFeaturedProducts(featured);
         if (Array.isArray(trending)) setTrendingProducts(trending);
+
+        // Find all products that have variants with a discountPrice less than normal price
+        let discounted = [];
+        if (Array.isArray(offersData) && offersData.length > 0) {
+          discounted = offersData;
+        } else if (Array.isArray(allProducts)) {
+          discounted = allProducts.filter(p =>
+            (p.variants || []).some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price))
+          );
+        }
+        setOfferProducts(discounted);
+
         if (reviewsData && reviewsData.reviews) {
           // Exactly 5 reviews on Home page as explicitly requested by user
           setHomeReviews(reviewsData.reviews.slice(0, 5));
@@ -170,6 +185,156 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
               <HeroPerfumeVideo />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* SPECIAL OFFERS & PROMOTIONAL DEALS SECTION (UNDER HERO) */}
+      <section id="special-offers-section" className="py-14 sm:py-20 bg-gradient-to-b from-[#120f0a]/90 via-[#0d0d14] to-[#0c0c11] border-b border-[#d4af37]/25 relative overflow-hidden">
+        {/* Golden ambient backdrops */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#d4af37]/8 rounded-full blur-[130px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-rose-500/5 rounded-full blur-[140px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 sm:mb-12">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-950/60 border border-rose-500/40 text-rose-300 text-[10px] sm:text-xs uppercase tracking-[0.2em] font-semibold mb-3 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                <Tag className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                <span>Special Offers & Variant Discounts</span>
+              </div>
+              <h2 className="font-serif-luxury text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-wide">
+                Exclusive Fragrance <span className="gold-text-gradient">Promotions</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-300 mt-2 max-w-xl font-light">
+                Limited-time discounted prices on luxury extrait de parfum atomizers and flacons. Handcrafted savings on our most distinguished scents.
+              </p>
+            </div>
+
+            <button
+              onClick={onExploreShop}
+              className="mt-4 md:mt-0 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[#f3e5ab] hover:text-white group cursor-pointer"
+            >
+              <span>Explore All Offers</span>
+              <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+
+          {/* If there are offer products */}
+          {offerProducts.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+              {offerProducts.map((product) => {
+                const discountedVariants = (product.variants || []).filter(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
+                const lowestDiscountedPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
+                const lowestVariant = (product.variants || []).find(v => (v.discountPrice || v.price) === lowestDiscountedPrice);
+                const originalPrice = lowestVariant ? lowestVariant.price : lowestDiscountedPrice;
+                const savings = originalPrice > lowestDiscountedPrice ? originalPrice - lowestDiscountedPrice : 0;
+                const discountPct = originalPrice > lowestDiscountedPrice ? Math.round(((originalPrice - lowestDiscountedPrice) / originalPrice) * 100) : 0;
+                const isFav = isFavourite(product.id);
+
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => onSelectProduct(product)}
+                    className="group glass-panel rounded-2xl overflow-hidden border border-rose-500/30 hover:border-[#d4af37] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1.5 shadow-xl bg-[#0e0c12] relative"
+                  >
+                    {/* Top Discount Badge Banner */}
+                    <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 items-start">
+                      <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white font-extrabold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-lg flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        <span>{discountPct > 0 ? `${discountPct}% OFF` : 'ON SALE'}</span>
+                      </div>
+                      {savings > 0 && (
+                        <div className="px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md border border-[#d4af37]/40 text-[#f3e5ab] text-[8px] sm:text-[9px] font-mono font-semibold">
+                          Save Rs. {savings.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
+                      <img
+                        src={product.images?.[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
+                      />
+
+                      {/* Favourite Heart Action Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavourite(product.id);
+                        }}
+                        title={isFav ? "Remove from favourites" : "Add to favourites"}
+                        aria-label="Toggle favourite"
+                        className="absolute top-2.5 right-2.5 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-md cursor-pointer"
+                      >
+                        <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
+                      </button>
+
+                      {/* Overlay: Price preview */}
+                      <div className="absolute bottom-2 inset-x-2 p-1.5 sm:p-2 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-between">
+                        <div>
+                          <span className="text-[8px] sm:text-[9px] text-gray-400 block uppercase leading-none">Deal From</span>
+                          <span className="font-serif-luxury text-xs sm:text-sm font-bold text-rose-300 whitespace-nowrap">
+                            Rs. {lowestDiscountedPrice.toLocaleString()}
+                          </span>
+                        </div>
+                        {originalPrice > lowestDiscountedPrice && (
+                          <span className="text-[9px] sm:text-xs text-gray-400 line-through whitespace-nowrap font-mono">
+                            Rs. {originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[9px] sm:text-[10px] text-[#d4af37] uppercase tracking-wider block mb-0.5 truncate font-medium">
+                          {product.scentFamily} • {product.gender}
+                        </span>
+                        <h3 className="font-serif-luxury text-xs sm:text-base font-bold text-white group-hover:text-[#d4af37] transition-colors line-clamp-1 leading-tight">
+                          {product.name}
+                        </h3>
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 hidden xs:block font-light">
+                          {product.description}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+                        <span className="text-[9px] sm:text-[10px] text-gray-400">
+                          {discountedVariants.length} discounted {discountedVariants.length === 1 ? 'size' : 'sizes'}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#f3e5ab] group-hover:translate-x-0.5 transition-transform">
+                          <span>Claim Deal</span>
+                          <ArrowRight className="w-3 h-3 text-[#d4af37]" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* When admin is preparing new discounted variants, show inviting promotional banner */
+            <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-[#d4af37]/30 bg-[#0d0d14]/90 text-center max-w-2xl mx-auto shadow-2xl relative overflow-hidden">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#d4af37]/20 to-rose-500/20 border border-[#d4af37]/40 flex items-center justify-center mx-auto mb-4 text-[#d4af37]">
+                <Tag className="w-6 h-6 text-rose-400 animate-pulse" />
+              </div>
+              <h3 className="font-serif-luxury text-xl sm:text-2xl font-bold text-white">
+                Exclusive Promotional Pricing Active
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-300 mt-2 max-w-lg mx-auto font-light leading-relaxed">
+                Variant discounts configured in the admin panel appear live here. Browse our complete artisan collection for special travel decant and flacon prices.
+              </p>
+              <button
+                onClick={onExploreShop}
+                className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-lg cursor-pointer"
+              >
+                <span>Browse Collection</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

@@ -13,10 +13,12 @@
     "deliveryFee": 500,
     "freeDeliveryThreshold": 0,
     "bankDetails": {
-      "branch": "Colombo 07 Branch",
-      "bankName": "Commercial Bank of Ceylon",
-      "accountName": "SCENTORY LUXURY PARFUMS (PVT) LTD",
-      "accountNumber": "8012345678"
+      "bankName": "Commercial Bank",
+      "accountName": "S M Suhail",
+      "accountNumber": "8021353334",
+      "branch": "Gampola Branch",
+      "swiftCode": "CCEYLKX",
+      "instructions": "Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below."
     },
     "heroBadge": "WE'RE LIVE • SCENTORY.LK",
     "heroTitle": "A New Destination For Your",

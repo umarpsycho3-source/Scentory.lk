@@ -37,10 +37,10 @@ export default function CheckoutView({ onBackToShop, onViewOrders, openAuthModal
 
   // Bank details from server
   const [bankSettings, setBankSettings] = useState({
-    bankName: 'Commercial Bank of Ceylon',
-    accountName: 'SCENTORY LANKA (PVT) LTD',
-    accountNumber: '8012398456',
-    branch: 'Kollupitiya Branch (Code: 045)',
+    bankName: 'Commercial Bank',
+    accountName: 'S M Suhail',
+    accountNumber: '8021353334',
+    branch: 'Gampola Branch',
     swiftCode: 'CCEYLKX',
     instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
   });

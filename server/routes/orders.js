@@ -190,10 +190,10 @@ router.post('/', authenticateToken, async (req, res) => {
       orderStatus: 'placed',
       stockDeducted: false,
       bankDetailsSnap: settings.bankDetails || {
-        bankName: 'Commercial Bank of Ceylon',
-        accountName: 'SCENTORY LUXURY PARFUMS (PVT) LTD',
-        accountNumber: '8012345678',
-        branch: 'Colombo 07 Branch'
+        bankName: 'Commercial Bank',
+        accountName: 'S M Suhail',
+        accountNumber: '8021353334',
+        branch: 'Gampola Branch'
       },
       adminNotes: '',
       createdAt: new Date().toISOString()

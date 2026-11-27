@@ -4,10 +4,10 @@ import { X, Building2, Copy, Check, ShieldCheck, AlertCircle } from 'lucide-reac
 export default function BankDetailsModal({ isOpen, onClose }) {
   const [copiedField, setCopiedField] = useState(null);
   const [bankSettings, setBankSettings] = useState({
-    bankName: 'Commercial Bank of Ceylon',
-    accountName: 'SCENTORY LANKA (PVT) LTD',
-    accountNumber: '8012398456',
-    branch: 'Kollupitiya Branch (Code: 045)',
+    bankName: 'Commercial Bank',
+    accountName: 'S M Suhail',
+    accountNumber: '8021353334',
+    branch: 'Gampola Branch',
     swiftCode: 'CCEYLKX',
     instructions: 'Please transfer the exact amount and mention your Name or Order Reference in the remarks/narration. You must upload your payment slip/screenshot at checkout.'
   });

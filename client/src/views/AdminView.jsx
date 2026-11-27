@@ -946,6 +946,14 @@ export default function AdminView({ onBackToShop }) {
         return;
       }
       payload.deliveryFee = Math.max(0, Number(payload.deliveryFee) || 0);
+      payload.bankDetails = {
+        bankName: 'Commercial Bank',
+        accountName: 'S M Suhail',
+        accountNumber: '8021353334',
+        branch: 'Gampola Branch',
+        swiftCode: 'CCEYLKX',
+        instructions: 'Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below.'
+      };
 
       if (payload.heroVideoUrl && typeof payload.heroVideoUrl === 'string' && payload.heroVideoUrl.startsWith('data:video')) {
         payload.heroVideoUrl = '/hero-uploaded-video.mp4';
@@ -3611,85 +3619,91 @@ export default function AdminView({ onBackToShop }) {
               </div>
 
               <form onSubmit={handleSaveSettings} className="glass-panel p-6 sm:p-8 rounded-2xl border border-[#d4af37]/25 space-y-6">
-                {/* Bank Details Config */}
+                {/* Bank Details Config (Uneditable / Locked) */}
                 <div className="space-y-4 pb-6 border-b border-[#d4af37]/15">
-                  <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider">
-                    Bank Account Details (Displayed for Customer Bank Transfer)
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="font-serif-luxury text-sm font-bold text-[#f3e5ab] uppercase tracking-wider flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-[#d4af37]" />
+                      <span>Bank Account Details (Displayed for Customer Bank Transfer)</span>
+                    </h3>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/40 text-[#f3e5ab] text-[10px] uppercase tracking-wider font-semibold w-fit">
+                      <Lock className="w-3 h-3 text-[#d4af37]" />
+                      <span>Official Locked & Uneditable</span>
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    Official Sri Lankan bank account details displayed to customers at checkout. These credentials are permanently locked to guarantee customer deposit security.
+                  </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
-                        Bank Name
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                        <span>Bank Name</span>
+                        <Lock className="w-3 h-3 text-gray-500" />
                       </label>
                       <input
                         type="text"
-                        value={settings.bankDetails?.bankName || ''}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          bankDetails: { ...settings.bankDetails, bankName: e.target.value }
-                        })}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        readOnly
+                        disabled
+                        value="Commercial Bank"
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#0e0e14] border border-white/10 text-gray-200 text-xs outline-none cursor-not-allowed select-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
-                        Account Holder Name
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                        <span>Account Holder Name</span>
+                        <Lock className="w-3 h-3 text-gray-500" />
                       </label>
                       <input
                         type="text"
-                        value={settings.bankDetails?.accountName || ''}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          bankDetails: { ...settings.bankDetails, accountName: e.target.value }
-                        })}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        readOnly
+                        disabled
+                        value="S M Suhail"
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#0e0e14] border border-white/10 text-gray-200 text-xs outline-none cursor-not-allowed select-all font-medium"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-[#d4af37] mb-1 font-semibold">
-                        Account Number
+                      <label className="block text-xs uppercase tracking-wider text-[#d4af37] mb-1 font-semibold flex items-center justify-between">
+                        <span>Account Number</span>
+                        <Lock className="w-3 h-3 text-[#d4af37]/70" />
                       </label>
                       <input
                         type="text"
-                        value={settings.bankDetails?.accountNumber || ''}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          bankDetails: { ...settings.bankDetails, accountNumber: e.target.value }
-                        })}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-[#d4af37]/40 text-[#f3e5ab] font-mono text-xs outline-none focus:border-[#d4af37]"
+                        readOnly
+                        disabled
+                        value="8021353334"
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#0e0e14] border border-[#d4af37]/40 text-[#f3e5ab] font-mono text-xs outline-none cursor-not-allowed select-all font-bold tracking-wider"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
-                        Branch
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                        <span>Branch</span>
+                        <Lock className="w-3 h-3 text-gray-500" />
                       </label>
                       <input
                         type="text"
-                        value={settings.bankDetails?.branch || ''}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          bankDetails: { ...settings.bankDetails, branch: e.target.value }
-                        })}
-                        className="w-full px-4 py-2.5 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        readOnly
+                        disabled
+                        value="Gampola Branch"
+                        className="w-full px-4 py-2.5 rounded-xl bg-[#0e0e14] border border-white/10 text-gray-200 text-xs outline-none cursor-not-allowed select-all font-medium"
                       />
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold">
-                        Customer Bank Transfer Instructions
+                      <label className="block text-xs uppercase tracking-wider text-gray-300 mb-1 font-semibold flex items-center justify-between">
+                        <span>Customer Bank Transfer Instructions</span>
+                        <Lock className="w-3 h-3 text-gray-500" />
                       </label>
                       <textarea
                         rows={2}
-                        value={settings.bankDetails?.instructions || ''}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          bankDetails: { ...settings.bankDetails, instructions: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 rounded-xl bg-[#14141c] border border-white/10 text-white text-xs outline-none focus:border-[#d4af37]"
+                        readOnly
+                        disabled
+                        value="Please transfer the exact total amount and use your name or phone number as the payment reference. Upload the screenshot/receipt slip below."
+                        className="w-full px-4 py-2 rounded-xl bg-[#0e0e14] border border-white/10 text-gray-300 text-xs outline-none cursor-not-allowed select-all font-normal"
                       />
                     </div>
                   </div>
