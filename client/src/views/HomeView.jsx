@@ -278,14 +278,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                 </div>
               </div>
               <button
-                onClick={() => {
-                  const el = document.getElementById('special-offers-grid');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  } else {
-                    onExploreShop();
-                  }
-                }}
+                onClick={() => onExploreShop({ filter: 'deals' })}
                 className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 cursor-pointer shadow-lg"
               >
                 <span>View Deal Fragrances</span>

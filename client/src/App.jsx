@@ -33,6 +33,7 @@ function MainApp() {
   const [authMessage, setAuthMessage] = useState('');
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [profileTab, setProfileTab] = useState('orders');
+  const [shopFilter, setShopFilter] = useState(null);
 
   const { toastMessage, setIsCartOpen } = useCart();
 
@@ -57,11 +58,16 @@ function MainApp() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleNavigate = (view, subTab = null) => {
+  const handleNavigate = (view, subTab = null, options = null) => {
     if (view === 'profile') {
       setProfileTab(subTab || 'profile');
     } else if (subTab) {
       setProfileTab(subTab);
+    }
+    if (options && options.filter) {
+      setShopFilter(options.filter);
+    } else if (view !== 'shop') {
+      setShopFilter(null);
     }
     setCurrentView(view);
     if (view === 'admin') {
@@ -72,6 +78,11 @@ function MainApp() {
       }
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleExploreShop = (options = {}) => {
+    setShopFilter(options?.filter || null);
+    handleNavigate('shop', null, options);
   };
 
   const handleRequireAuth = (msg = '') => {
@@ -126,7 +137,7 @@ function MainApp() {
       <main className="flex-1 z-10">
         {currentView === 'home' && (
           <HomeView
-            onExploreShop={() => handleNavigate('shop')}
+            onExploreShop={handleExploreShop}
             onSelectProduct={handleSelectProduct}
             onOpenBankDetails={() => setIsBankModalOpen(true)}
             onNavigateReviews={() => handleNavigate('reviews')}
@@ -135,6 +146,8 @@ function MainApp() {
 
         {currentView === 'shop' && (
           <ShopView
+            initialFilter={shopFilter}
+            onClearFilter={() => setShopFilter(null)}
             onSelectProduct={handleSelectProduct}
             onQuickOrder={(product) => {
               handleSelectProduct(product);

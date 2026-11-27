@@ -3,7 +3,7 @@ import { Search, SlidersHorizontal, Sparkles, Eye, ShoppingBag, Check, Zap, Tag,
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 
-export default function ShopView({ onSelectProduct, onQuickOrder }) {
+export default function ShopView({ onSelectProduct, onQuickOrder, initialFilter = null, onClearFilter }) {
   const { addToCart, promotionalDeal, isProductDealEligible } = useCart();
   const { toggleFavourite, isFavourite } = useFavourites();
   const [products, setProducts] = useState([]);
@@ -81,7 +81,14 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
   const [selectedFamily, setSelectedFamily] = useState('all');
   const [onlyFeatured, setOnlyFeatured] = useState(false);
   const [onlyDiscounted, setOnlyDiscounted] = useState(false);
+  const [onlyDealProducts, setOnlyDealProducts] = useState(initialFilter === 'deals');
   const [sortBy, setSortBy] = useState('trending'); // trending, price-low, price-high, newest
+
+  useEffect(() => {
+    if (initialFilter === 'deals') {
+      setOnlyDealProducts(true);
+    }
+  }, [initialFilter]);
 
   useEffect(() => {
     // Listen for custom events triggered from Navbar
@@ -93,13 +100,18 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
       setSortBy('trending');
       setOnlyFeatured(false);
     };
+    const handleDealsFilter = () => {
+      setOnlyDealProducts(true);
+    };
 
     window.addEventListener('filter-featured', handleFeaturedFilter);
     window.addEventListener('filter-trending', handleTrendingFilter);
+    window.addEventListener('filter-deals', handleDealsFilter);
 
     return () => {
       window.removeEventListener('filter-featured', handleFeaturedFilter);
       window.removeEventListener('filter-trending', handleTrendingFilter);
+      window.removeEventListener('filter-deals', handleDealsFilter);
     };
   }, []);
 
@@ -120,6 +132,9 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
         if (onlyDiscounted) {
           list = list.filter(p => (p.variants || []).some(v => v.discountPrice && v.discountPrice < v.price));
         }
+        if (onlyDealProducts) {
+          list = list.filter(p => isProductDealEligible(p.id));
+        }
         setProducts(list);
       })
       .catch(err => console.error(err))
@@ -128,7 +143,7 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
 
   useEffect(() => {
     fetchProducts();
-  }, [search, selectedGender, selectedFamily, onlyFeatured, onlyDiscounted, sortBy]);
+  }, [search, selectedGender, selectedFamily, onlyFeatured, onlyDiscounted, onlyDealProducts, sortBy, promotionalDeal]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-in fade-in duration-300">
@@ -223,6 +238,24 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
             <span>Discounts & Offers</span>
           </button>
 
+          {promotionalDeal?.enabled && (
+            <button
+              onClick={() => {
+                const next = !onlyDealProducts;
+                setOnlyDealProducts(next);
+                if (!next && onClearFilter) onClearFilter();
+              }}
+              className={`px-3 py-1 rounded-full border text-[11px] font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                onlyDealProducts
+                  ? 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  : 'border-white/10 text-gray-400 hover:border-white/20'
+              }`}
+            >
+              <Gift className="w-3 h-3 text-emerald-400" />
+              <span>{promotionalDeal.badgeText || 'Deal Fragrances'}</span>
+            </button>
+          )}
+
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[11px] text-gray-400">Scent Family:</span>
             <select
@@ -240,6 +273,42 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
           </div>
         </div>
       </div>
+
+      {/* Active Deal Filter Callout Banner */}
+      {onlyDealProducts && promotionalDeal?.enabled && (
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-black to-emerald-950/80 border border-emerald-500/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl animate-in fade-in">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-black flex items-center justify-center font-bold flex-shrink-0 shadow-lg">
+              <Gift className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500 text-black uppercase tracking-wider">
+                  {promotionalDeal.badgeText || 'SPECIAL OFFER'}
+                </span>
+                <strong className="text-white text-sm font-serif-luxury font-bold tracking-wide">
+                  {promotionalDeal.title}
+                </strong>
+              </div>
+              <p className="text-[11px] text-emerald-200 mt-0.5 font-light">
+                {promotionalDeal.appliesTo === 'specific'
+                  ? `Showing only the assigned fragrances that qualify for this promotion.`
+                  : 'Showing fragrances eligible for this promotion. Free bottle discount applies automatically at checkout!'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOnlyDealProducts(false);
+              if (onClearFilter) onClearFilter();
+            }}
+            className="px-4 py-2 rounded-xl bg-black/60 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 self-end sm:self-auto shadow"
+          >
+            <span>✕ Show All Fragrances</span>
+          </button>
+        </div>
+      )}
 
       {/* Product Grid */}
       {loading ? (
