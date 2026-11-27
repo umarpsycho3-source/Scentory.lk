@@ -81,34 +81,61 @@ app.get('/googlebf136b5ad5675810.html', (req, res) => {
   res.send('google-site-verification: googlebf136b5ad5675810.html');
 });
 
+// Helper to escape XML special characters
+function escapeXml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function formatLastmod(dateVal) {
+  if (!dateVal) return new Date().toISOString().split('T')[0];
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+  return d.toISOString().split('T')[0];
+}
+
 // SEO: robots.txt for Google & search engine crawlers
 app.get('/robots.txt', (req, res) => {
-  res.type('text/plain');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, must-revalidate');
   res.send(`User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin
-Sitemap: https://scentory.lk/sitemap.xml
+Disallow: /checkout
+Disallow: /profile
+Sitemap: https://scentory-lk.vercel.app/sitemap.xml
 `);
 });
 
-// SEO: dynamic sitemap.xml for Google indexing
+// SEO: dynamic sitemap.xml for Google Search Console indexing
 app.get('/sitemap.xml', (req, res) => {
-  res.type('application/xml');
-  const baseUrl = 'https://scentory.lk';
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, must-revalidate');
+
+  const baseUrl = 'https://scentory-lk.vercel.app';
+  const today = new Date().toISOString().split('T')[0];
+
   let products = [];
   try {
-    products = require('./db').getProducts();
+    const pList = require('./db').getProducts();
+    if (Array.isArray(pList)) {
+      products = pList.filter(p => p && p.id);
+    }
   } catch (e) {}
 
-  const today = new Date().toISOString().split('T')[0];
-  const productUrls = (products || []).map(p => `
-  <url>
-    <loc>${baseUrl}/#product-${p.id}</loc>
-    <lastmod>${today}</lastmod>
+  const productUrls = products.map(p => `  <url>
+    <loc>${baseUrl}/product/${escapeXml(encodeURIComponent(p.id))}</loc>
+    <lastmod>${formatLastmod(p.updatedAt || p.createdAt)}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
-  </url>`).join('');
+  </url>`).join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -119,19 +146,20 @@ app.get('/sitemap.xml', (req, res) => {
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>${baseUrl}/#shop</loc>
+    <loc>${baseUrl}/shop</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>${baseUrl}/#reviews</loc>
+    <loc>${baseUrl}/reviews</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
-  </url>${productUrls}
+  </url>${productUrls ? '\n' + productUrls : ''}
 </urlset>`;
-  res.send(xml);
+
+  res.status(200).send(xml);
 });
 
 // Serve hero videos directly with streaming and range support

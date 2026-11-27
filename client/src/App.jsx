@@ -19,14 +19,27 @@ import FloatingSocials from './components/FloatingSocials';
 function MainApp() {
   const { user, isAdmin } = useAuth();
 
-  // URL-driven View Detection for http://localhost:5000/admin
-  const [currentView, setCurrentView] = useState(() => {
+  const resolveViewFromUrl = () => {
     const path = window.location.pathname.toLowerCase();
     if (path.startsWith('/admin') || window.location.search.includes('admin') || window.location.hash.includes('admin')) {
-      return 'admin';
+      return { view: 'admin', productId: null };
     }
-    return 'home';
-  });
+    if (path.startsWith('/shop')) {
+      return { view: 'shop', productId: null };
+    }
+    if (path.startsWith('/reviews')) {
+      return { view: 'reviews', productId: null };
+    }
+    if (path.startsWith('/product/')) {
+      const parts = window.location.pathname.split('/');
+      const id = parts[2] || null;
+      return { view: 'product-detail', productId: id };
+    }
+    return { view: 'home', productId: null };
+  };
+
+  // URL-driven View Detection for storefront and admin
+  const [currentView, setCurrentView] = useState(() => resolveViewFromUrl().view);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -37,24 +50,46 @@ function MainApp() {
 
   const { toastMessage, setIsCartOpen } = useCart();
 
-  // Listen to browser URL changes (e.g. typing /admin or browser back/forward)
+  // Load product if directly landing on a /product/:id URL
+  useEffect(() => {
+    const route = resolveViewFromUrl();
+    if (route.view === 'product-detail' && route.productId) {
+      fetch(`/api/products/${route.productId}`)
+        .then(res => res.json())
+        .then(prod => {
+          if (prod && prod.id) {
+            setSelectedProduct(prod);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Listen to browser URL changes (e.g. typing /admin, /shop, /reviews or browser back/forward)
   useEffect(() => {
     const checkUrl = () => {
-      const path = window.location.pathname.toLowerCase();
-      if (path.startsWith('/admin') || window.location.search.includes('admin') || window.location.hash.includes('admin')) {
-        setCurrentView('admin');
-      } else if (currentView === 'admin') {
-        setCurrentView('home');
+      const route = resolveViewFromUrl();
+      setCurrentView(route.view);
+      if (route.view === 'product-detail' && route.productId && (!selectedProduct || selectedProduct.id !== route.productId)) {
+        fetch(`/api/products/${route.productId}`)
+          .then(res => res.json())
+          .then(prod => {
+            if (prod && prod.id) setSelectedProduct(prod);
+          })
+          .catch(() => {});
       }
     };
 
     window.addEventListener('popstate', checkUrl);
     return () => window.removeEventListener('popstate', checkUrl);
-  }, [currentView]);
+  }, [selectedProduct]);
 
   const handleSelectProduct = (product) => {
     setSelectedProduct(product);
     setCurrentView('product-detail');
+    if (product && product.id) {
+      window.history.pushState({}, '', `/product/${product.id}`);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -72,10 +107,12 @@ function MainApp() {
     setCurrentView(view);
     if (view === 'admin') {
       window.history.pushState({}, '', '/admin');
-    } else {
-      if (window.location.pathname.toLowerCase().startsWith('/admin')) {
-        window.history.pushState({}, '', '/');
-      }
+    } else if (view === 'shop') {
+      window.history.pushState({}, '', '/shop');
+    } else if (view === 'reviews') {
+      window.history.pushState({}, '', '/reviews');
+    } else if (view === 'home') {
+      window.history.pushState({}, '', '/');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
