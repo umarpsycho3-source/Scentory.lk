@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /checkout
+Disallow: /profile
+Sitemap: https://scentory-lk.vercel.app/sitemap.xml

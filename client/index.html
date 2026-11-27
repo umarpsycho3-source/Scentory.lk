@@ -23,10 +23,10 @@
     <meta property="og:locale" content="en_LK" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SCENTORY.LK" />
-    <meta property="og:title" content="SCENTORY.LK | Signature Fragrances & Luxury Decants Sri Lanka" />
-    <meta property="og:description" content="Sri Lanka's dedicated house for authentic niche & designer decants. Handcrafted into sterile clinical glass atomizers and dispatched islandwide." />
+    <meta property="og:title" content="SCENTORY.LK | Luxury Perfumes & Signature Fragrance Decants in Sri Lanka" />
+    <meta property="og:description" content="Discover authentic designer & niche perfume decants in Sri Lanka. Handcrafted into sterile clinical glass atomizers in Ulapane and dispatched islandwide." />
     <meta property="og:url" content="https://scentory-lk.vercel.app/" />
-    <meta property="og:image" content="/brand-logo.png" />
+    <meta property="og:image" content="https://scentory-lk.vercel.app/brand-logo.png" />
     <meta property="og:image:width" content="800" />
     <meta property="og:image:height" content="800" />
     <meta property="og:image:alt" content="SCENTORY.LK Signature Fragrances" />
@@ -35,7 +35,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SCENTORY.LK | Luxury Perfumes & Decants Sri Lanka" />
     <meta name="twitter:description" content="Discover authentic designer & niche perfume decants in Sri Lanka. Sterile travel sizes dispatched islandwide." />
-    <meta name="twitter:image" content="/brand-logo.png" />
+    <meta name="twitter:image" content="https://scentory-lk.vercel.app/brand-logo.png" />
 
     <!-- Local SEO Geo Targeting -->
     <meta name="geo.region" content="LK" />
@@ -52,42 +52,54 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
 
     <!-- JSON-LD Structured Data Schema for Google Search Engine Rankings -->
-    <script type="application/ld+json">
+    <script id="scentory-ldjson" type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "OnlineStore",
-      "name": "SCENTORY.LK",
-      "url": "https://scentory.lk",
-      "logo": "https://scentory.lk/brand-logo.png",
-      "image": "https://scentory.lk/brand-logo.png",
-      "description": "Sri Lanka's dedicated house for authentic niche & designer perfume decants. Handcrafted into sterile clinical glass atomizers in Ulapane.",
-      "telephone": "+94763151311",
-      "priceRange": "LKR 1,500 - LKR 25,000",
-      "currenciesAccepted": "LKR",
-      "paymentAccepted": "Bank Deposit, Online Bank Transfer",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Nawalapitiya Road",
-        "addressLocality": "Ulapane",
-        "addressRegion": "Central Province",
-        "addressCountry": "LK"
-      },
-      "geo": {
-        "@type": "GeoCoordinates",
-        "latitude": 7.0983,
-        "longitude": 80.5736
-      },
-      "openingHoursSpecification": {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": [
-          "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
-        ],
-        "opens": "08:00",
-        "closes": "22:00"
-      },
-      "sameAs": [
-        "https://www.instagram.com/scentory.lk",
-        "https://wa.me/94763151311"
+      "@graph": [
+        {
+          "@type": "OnlineStore",
+          "@id": "https://scentory-lk.vercel.app/#store",
+          "name": "SCENTORY.LK",
+          "url": "https://scentory-lk.vercel.app/",
+          "logo": "https://scentory-lk.vercel.app/brand-logo.png",
+          "image": "https://scentory-lk.vercel.app/brand-logo.png",
+          "description": "Sri Lanka's dedicated house for authentic niche & designer perfume decants. Handcrafted into sterile clinical glass atomizers in Ulapane.",
+          "telephone": "+94763151311",
+          "priceRange": "LKR 1,300 - LKR 25,000",
+          "currenciesAccepted": "LKR",
+          "paymentAccepted": "Bank Deposit, Online Bank Transfer",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Nawalapitiya Road",
+            "addressLocality": "Ulapane",
+            "addressRegion": "Central Province",
+            "addressCountry": "LK"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 7.0983,
+            "longitude": 80.5736
+          },
+          "openingHoursSpecification": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+            ],
+            "opens": "08:00",
+            "closes": "22:00"
+          },
+          "sameAs": [
+            "https://www.instagram.com/scentory.lk",
+            "https://wa.me/94763151311"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://scentory-lk.vercel.app/#website",
+          "url": "https://scentory-lk.vercel.app/",
+          "name": "SCENTORY.LK",
+          "description": "Luxury Perfumes & Decants in Sri Lanka"
+        }
       ]
     }
     </script>

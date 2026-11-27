@@ -185,13 +185,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
 
               {/* CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2 w-full max-w-md mx-auto lg:mx-0">
-                <button
-                  onClick={onExploreShop}
+                <a
+                  href="/shop"
+                  onClick={(e) => { e.preventDefault(); onExploreShop(); }}
                   className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] hover:opacity-95 transition-all shadow-[0_0_25px_rgba(212,175,55,0.4)] flex items-center justify-center gap-2 group cursor-pointer"
                 >
                   <span>Explore Fragrances</span>
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
+                </a>
 
                 <button
                   onClick={onOpenBankDetails}
@@ -331,13 +332,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                     {promotionalDeal.bannerText}
                   </p>
                   <div className="pt-2">
-                    <button
-                      onClick={() => onExploreShop({ filter: 'deals' })}
+                    <a
+                      href="/shop"
+                      onClick={(e) => { e.preventDefault(); onExploreShop({ filter: 'deals' }); }}
                       className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-widest hover:opacity-95 transition-all shadow-lg cursor-pointer"
                     >
                       <span>Shop Fragrances Now</span>
                       <ArrowRight className="w-4 h-4" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               )}
@@ -369,13 +371,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                 </p>
               </div>
 
-              <button
-                onClick={onExploreShop}
+              <a
+                href="/shop"
+                onClick={(e) => { e.preventDefault(); onExploreShop(); }}
                 className="mt-4 md:mt-0 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-[#f3e5ab] hover:text-white group cursor-pointer"
               >
                 <span>Explore All Offers</span>
                 <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
-              </button>
+              </a>
             </div>
 
             <div id="special-offers-grid" className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 scroll-mt-24">
@@ -467,8 +470,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                         <span className="text-[9px] sm:text-[10px] text-[#d4af37] uppercase tracking-wider block mb-0.5 truncate font-medium">
                           {product.scentFamily} • {product.gender}
                         </span>
-                        <h3 className="font-serif-luxury text-xs sm:text-base font-bold text-white group-hover:text-[#d4af37] transition-colors line-clamp-1 leading-tight">
-                          {product.name}
+                        <h3 className="font-serif-luxury text-xs sm:text-base font-bold text-white transition-colors line-clamp-1 leading-tight">
+                          <a
+                            href={`/product/${product.id}`}
+                            onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                            className="hover:text-[#d4af37] transition-colors"
+                          >
+                            {product.name}
+                          </a>
                         </h3>
                         <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 hidden xs:block font-light">
                           {product.description}
@@ -481,10 +490,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                             ? `${discountedVariants.length} discounted ${discountedVariants.length === 1 ? 'size' : 'sizes'}`
                             : (isDeal ? (promotionalDeal?.badgeText || 'Deal Qualifying') : `${(product.variants || []).length} available sizes`)}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#f3e5ab] group-hover:translate-x-0.5 transition-transform">
+                        <a
+                          href={`/product/${product.id}`}
+                          onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                          className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#f3e5ab] group-hover:translate-x-0.5 transition-transform"
+                        >
                           <span>Claim Deal</span>
                           <ArrowRight className="w-3 h-3 text-[#d4af37]" />
-                        </span>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -591,8 +604,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                     <span className="text-[9px] sm:text-[11px] text-[#d4af37] uppercase tracking-wider block mb-0.5 line-clamp-1">
                       {product.scentFamily} • {product.gender}
                     </span>
-                    <h3 className="font-serif-luxury text-xs sm:text-lg font-bold text-white group-hover:text-[#d4af37] transition-colors line-clamp-1 leading-tight">
-                      {product.name}
+                    <h3 className="font-serif-luxury text-xs sm:text-lg font-bold text-white transition-colors line-clamp-1 leading-tight">
+                      <a
+                        href={`/product/${product.id}`}
+                        onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                        className="hover:text-[#d4af37] transition-colors"
+                      >
+                        {product.name}
+                      </a>
                     </h3>
                     <p className="text-[10px] sm:text-xs text-gray-400 mt-1 line-clamp-1 sm:line-clamp-2 hidden xs:block font-light">
                       {product.description}
@@ -661,7 +680,13 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                   <div>
                     <span className="text-[8px] sm:text-[10px] text-gray-400 block truncate">{product.scentFamily}</span>
                     <h4 className="font-serif-luxury text-xs sm:text-sm font-semibold text-white line-clamp-1 leading-tight">
-                      {product.name}
+                      <a
+                        href={`/product/${product.id}`}
+                        onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                        className="hover:text-[#d4af37] transition-colors"
+                      >
+                        {product.name}
+                      </a>
                     </h4>
                   </div>
 
@@ -849,13 +874,14 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
             </button>
 
             {/* View All Reviews Button */}
-            <button
-              onClick={onNavigateReviews}
+            <a
+              href="/reviews"
+              onClick={(e) => { e.preventDefault(); onNavigateReviews(); }}
               className="w-full sm:w-auto px-6 py-3.5 rounded-full border border-[#d4af37]/50 text-[#f3e5ab] hover:bg-[#d4af37]/15 font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
             >
               <MessageSquare className="w-4 h-4 text-[#d4af37]" />
               <span>View All Customer Reviews ({totalReviews})</span>
-            </button>
+            </a>
           </div>
         </div>
       </section>

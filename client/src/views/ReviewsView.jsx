@@ -59,13 +59,30 @@ export default function ReviewsView({ onBackToShop, currentUser }) {
       {/* Header Bar */}
       <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <button
-            onClick={onBackToShop}
-            className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 hover:text-[#d4af37] mb-2 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Fragrances</span>
-          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <a
+              href="/shop"
+              onClick={(e) => { e.preventDefault(); onBackToShop(); }}
+              className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-gray-400 hover:text-[#d4af37] cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Fragrances</span>
+            </a>
+            <span className="text-gray-600">|</span>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+              <a
+                href="/"
+                onClick={(e) => { e.preventDefault(); onBackToShop(); }}
+                className="hover:text-[#d4af37] transition-colors cursor-pointer"
+              >
+                Home
+              </a>
+              <span className="text-gray-600">&gt;</span>
+              <span className="text-[#fcf6ba] font-serif-luxury">
+                Customer Reviews
+              </span>
+            </nav>
+          </div>
           <span className="text-xs uppercase tracking-[0.25em] text-[#d4af37] font-semibold block mb-1">
             Real Customer Testimonials
           </span>

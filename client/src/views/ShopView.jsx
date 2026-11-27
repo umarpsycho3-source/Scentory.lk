@@ -423,12 +423,15 @@ export default function ShopView({ onSelectProduct, onQuickOrder, initialFilter 
                     </div>
 
                     {/* Title */}
-                    <h3
-                      onClick={() => onSelectProduct(product)}
-                      className="font-serif-luxury text-xs sm:text-base font-bold text-white hover:text-[#d4af37] cursor-pointer transition-colors line-clamp-1 leading-tight"
-                      title={product.name}
-                    >
-                      {product.name}
+                    <h3 className="font-serif-luxury text-xs sm:text-base font-bold text-white transition-colors line-clamp-1 leading-tight">
+                      <a
+                        href={`/product/${product.id}`}
+                        onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                        className="hover:text-[#d4af37] transition-colors block"
+                        title={product.name}
+                      >
+                        {product.name}
+                      </a>
                     </h3>
                     <p className="text-[10px] sm:text-xs text-gray-400 line-clamp-1 mt-0.5 font-light hidden xs:block">
                       {product.tagline}
@@ -465,14 +468,15 @@ export default function ShopView({ onSelectProduct, onQuickOrder, initialFilter 
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onSelectProduct(product)}
-                      className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-[#1a1a24] hover:bg-[#d4af37] text-[#d4af37] hover:text-black transition-all border border-[#d4af37]/40 shadow-md group/btn flex-shrink-0 cursor-pointer"
+                    <a
+                      href={`/product/${product.id}`}
+                      onClick={(e) => { e.preventDefault(); onSelectProduct(product); }}
+                      className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-[#1a1a24] hover:bg-[#d4af37] text-[#d4af37] hover:text-black transition-all border border-[#d4af37]/40 shadow-md group/btn flex-shrink-0 cursor-pointer flex items-center justify-center"
                       title="Select Bottle Size"
                       aria-label="Select Bottle Size"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>

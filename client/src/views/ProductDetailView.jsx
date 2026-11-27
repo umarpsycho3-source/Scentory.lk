@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ShoppingBag, Zap, ShieldCheck, Truck, RefreshCw, Mess
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 
-export default function ProductDetailView({ product, onBack, onCheckoutNow }) {
+export default function ProductDetailView({ product, isLoading = false, onBack, onBackToHome, onCheckoutNow }) {
   const { addToCart, setIsCartOpen, promotionalDeal, isProductDealEligible } = useCart();
   const { toggleFavourite, isFavourite } = useFavourites();
   const [selectedImage, setSelectedImage] = useState(0);
@@ -11,16 +11,43 @@ export default function ProductDetailView({ product, onBack, onCheckoutNow }) {
   const [quantity, setQuantity] = useState(1);
   const [isCopied, setIsCopied] = useState(false);
 
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 sm:py-12 animate-in fade-in duration-300">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
+          <div className="h-4 w-24 bg-white/10 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          <div className="lg:col-span-6 aspect-square rounded-2xl bg-white/5 border border-[#d4af37]/20 animate-pulse flex items-center justify-center">
+            <span className="text-xs uppercase tracking-widest text-[#d4af37] font-mono">Loading Fragrance...</span>
+          </div>
+          <div className="lg:col-span-6 space-y-6">
+            <div className="h-8 w-3/4 bg-white/10 rounded animate-pulse" />
+            <div className="h-6 w-1/3 bg-[#d4af37]/20 rounded animate-pulse" />
+            <div className="h-24 w-full bg-white/5 rounded-xl animate-pulse" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-14 bg-white/10 rounded-xl animate-pulse" />
+              <div className="h-14 bg-white/10 rounded-xl animate-pulse" />
+            </div>
+            <div className="h-12 w-full bg-[#d4af37]/30 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
         <h2 className="text-xl font-serif-luxury text-white mb-4">Fragrance Not Found</h2>
-        <button
-          onClick={onBack}
-          className="px-6 py-2.5 rounded-full bg-[#d4af37] text-black font-semibold text-xs tracking-wider uppercase"
+        <a
+          href="/shop"
+          onClick={(e) => { e.preventDefault(); onBack(); }}
+          className="px-6 py-2.5 rounded-full bg-[#d4af37] text-black font-semibold text-xs tracking-wider uppercase cursor-pointer"
         >
           Return To Fragrances
-        </button>
+        </a>
       </div>
     );
   }
@@ -56,14 +83,39 @@ export default function ProductDetailView({ product, onBack, onCheckoutNow }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 sm:py-12 animate-in fade-in duration-300 overflow-x-hidden">
       {/* Breadcrumb / Back button */}
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-gray-400 hover:text-[#d4af37] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Collection</span>
-        </button>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <a
+            href="/shop"
+            onClick={(e) => { e.preventDefault(); onBack(); }}
+            className="inline-flex items-center gap-1.5 text-xs tracking-widest uppercase text-gray-400 hover:text-[#d4af37] transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back</span>
+          </a>
+          <span className="text-gray-600">|</span>
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); onBackToHome ? onBackToHome() : onBack(); }}
+              className="hover:text-[#d4af37] transition-colors cursor-pointer"
+            >
+              Home
+            </a>
+            <span className="text-gray-600">&gt;</span>
+            <a
+              href="/shop"
+              onClick={(e) => { e.preventDefault(); onBack(); }}
+              className="hover:text-[#d4af37] transition-colors cursor-pointer"
+            >
+              All Fragrances
+            </a>
+            <span className="text-gray-600">&gt;</span>
+            <span className="text-[#fcf6ba] font-serif-luxury truncate max-w-[140px] sm:max-w-none">
+              {product.name}
+            </span>
+          </nav>
+        </div>
         <span className="text-xs text-gray-400 uppercase tracking-widest">
           {product.gender || 'Unisex'} • {product.scentFamily || 'Extrait'}
         </span>

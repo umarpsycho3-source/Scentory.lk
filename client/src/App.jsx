@@ -42,6 +42,10 @@ function MainApp() {
   const [currentView, setCurrentView] = useState(() => resolveViewFromUrl().view);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isProductLoading, setIsProductLoading] = useState(() => {
+    const route = resolveViewFromUrl();
+    return route.view === 'product-detail' && !!route.productId;
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
@@ -54,6 +58,7 @@ function MainApp() {
   useEffect(() => {
     const route = resolveViewFromUrl();
     if (route.view === 'product-detail' && route.productId) {
+      setIsProductLoading(true);
       fetch(`/api/products/${route.productId}`)
         .then(res => res.json())
         .then(prod => {
@@ -61,7 +66,8 @@ function MainApp() {
             setSelectedProduct(prod);
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setIsProductLoading(false));
     }
   }, []);
 
@@ -71,18 +77,218 @@ function MainApp() {
       const route = resolveViewFromUrl();
       setCurrentView(route.view);
       if (route.view === 'product-detail' && route.productId && (!selectedProduct || selectedProduct.id !== route.productId)) {
+        setIsProductLoading(true);
         fetch(`/api/products/${route.productId}`)
           .then(res => res.json())
           .then(prod => {
             if (prod && prod.id) setSelectedProduct(prod);
           })
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => setIsProductLoading(false));
       }
     };
 
     window.addEventListener('popstate', checkUrl);
     return () => window.removeEventListener('popstate', checkUrl);
   }, [selectedProduct]);
+
+  // Dynamic SEO Meta & JSON-LD Structured Data Schema Manager
+  useEffect(() => {
+    const baseUrl = 'https://scentory-lk.vercel.app';
+    let title = 'SCENTORY.LK | Luxury Perfumes & Signature Fragrance Decants in Sri Lanka';
+    let description = 'Discover authentic designer & niche perfume decants in Sri Lanka. Handcrafted into sterile clinical glass atomizers in Ulapane and dispatched islandwide.';
+    let canonical = `${baseUrl}/`;
+    let ogImage = `${baseUrl}/brand-logo.png`;
+    let jsonLdData = null;
+
+    if (currentView === 'shop') {
+      title = 'All Fragrances & Decants Collection | SCENTORY.LK Sri Lanka';
+      description = 'Browse our full collection of luxury extrait de parfum atomizers and flacons. 10ml, 30ml, 50ml, and 100ml authentic perfume decants in Sri Lanka.';
+      canonical = `${baseUrl}/shop`;
+      jsonLdData = {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'CollectionPage',
+            '@id': `${baseUrl}/shop#collection`,
+            'url': `${baseUrl}/shop`,
+            'name': title,
+            'description': description
+          },
+          {
+            '@type': 'BreadcrumbList',
+            '@id': `${baseUrl}/shop#breadcrumb`,
+            'itemListElement': [
+              { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${baseUrl}/` },
+              { '@type': 'ListItem', 'position': 2, 'name': 'All Fragrances', 'item': `${baseUrl}/shop` }
+            ]
+          }
+        ]
+      };
+    } else if (currentView === 'reviews') {
+      title = 'Customer Reviews & Fragrance Ratings | SCENTORY.LK Sri Lanka';
+      description = 'Read verified customer reviews and ratings for authentic fragrance decants from SCENTORY.LK. Trusted perfume atomizers across Sri Lanka.';
+      canonical = `${baseUrl}/reviews`;
+      jsonLdData = {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'ItemPage',
+            '@id': `${baseUrl}/reviews#page`,
+            'url': `${baseUrl}/reviews`,
+            'name': title,
+            'description': description
+          },
+          {
+            '@type': 'BreadcrumbList',
+            '@id': `${baseUrl}/reviews#breadcrumb`,
+            'itemListElement': [
+              { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${baseUrl}/` },
+              { '@type': 'ListItem', 'position': 2, 'name': 'Customer Reviews', 'item': `${baseUrl}/reviews` }
+            ]
+          }
+        ]
+      };
+    } else if (currentView === 'product-detail' && selectedProduct) {
+      title = `${selectedProduct.name} | Luxury Extrait De Parfum | SCENTORY.LK`;
+      const family = selectedProduct.scentFamily ? ` (${selectedProduct.scentFamily})` : '';
+      description = selectedProduct.description
+        ? `${selectedProduct.description.slice(0, 150)}... Authentic perfume decants in Sri Lanka.`
+        : `Buy authentic ${selectedProduct.name}${family} luxury extrait de parfum decant in Sri Lanka. 100% genuine with islandwide delivery.`;
+      canonical = `${baseUrl}/product/${selectedProduct.id}`;
+      if (selectedProduct.images && selectedProduct.images[0]) {
+        ogImage = selectedProduct.images[0].startsWith('http') ? selectedProduct.images[0] : `${baseUrl}${selectedProduct.images[0]}`;
+      }
+
+      const variants = Array.isArray(selectedProduct.variants) && selectedProduct.variants.length > 0
+        ? selectedProduct.variants
+        : [{ price: 3500 }];
+      const prices = variants.map(v => Number(v.discountPrice || v.price) || 0).filter(p => p > 0);
+      const minPrice = prices.length ? Math.min(...prices) : 3500;
+      const maxPrice = prices.length ? Math.max(...prices) : 3500;
+
+      jsonLdData = {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Product',
+            '@id': `${baseUrl}/product/${selectedProduct.id}#product`,
+            'name': selectedProduct.name,
+            'image': selectedProduct.images && selectedProduct.images.length ? selectedProduct.images : [ogImage],
+            'description': description,
+            'sku': selectedProduct.id,
+            'brand': {
+              '@type': 'Brand',
+              'name': 'SCENTORY.LK'
+            },
+            'offers': {
+              '@type': 'AggregateOffer',
+              'priceCurrency': 'LKR',
+              'lowPrice': minPrice,
+              'highPrice': maxPrice,
+              'offerCount': variants.length,
+              'price': minPrice,
+              'priceValidUntil': '2027-12-31',
+              'availability': 'https://schema.org/InStock',
+              'url': `${baseUrl}/product/${selectedProduct.id}`,
+              'seller': {
+                '@type': 'Organization',
+                'name': 'SCENTORY.LK'
+              }
+            }
+          },
+          {
+            '@type': 'BreadcrumbList',
+            '@id': `${baseUrl}/product/${selectedProduct.id}#breadcrumb`,
+            'itemListElement': [
+              { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${baseUrl}/` },
+              { '@type': 'ListItem', 'position': 2, 'name': 'All Fragrances', 'item': `${baseUrl}/shop` },
+              { '@type': 'ListItem', 'position': 3, 'name': selectedProduct.name, 'item': `${baseUrl}/product/${selectedProduct.id}` }
+            ]
+          }
+        ]
+      };
+    } else {
+      // Homepage
+      jsonLdData = {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'OnlineStore',
+            '@id': `${baseUrl}/#store`,
+            'name': 'SCENTORY.LK',
+            'url': `${baseUrl}/`,
+            'logo': `${baseUrl}/brand-logo.png`,
+            'image': `${baseUrl}/brand-logo.png`,
+            'description': description,
+            'telephone': '+94763151311',
+            'priceRange': 'LKR 1,300 - LKR 25,000',
+            'currenciesAccepted': 'LKR',
+            'paymentAccepted': 'Bank Deposit, Online Bank Transfer',
+            'address': {
+              '@type': 'PostalAddress',
+              'streetAddress': 'Nawalapitiya Road',
+              'addressLocality': 'Ulapane',
+              'addressRegion': 'Central Province',
+              'addressCountry': 'LK'
+            }
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${baseUrl}/#website`,
+            'url': `${baseUrl}/`,
+            'name': 'SCENTORY.LK',
+            'description': 'Luxury Perfumes & Decants in Sri Lanka'
+          }
+        ]
+      };
+    }
+
+    // Apply document title
+    document.title = title;
+
+    // Helper to safely set meta tags
+    const setMeta = (nameOrProp, attrName, value) => {
+      let el = document.querySelector(`meta[name="${nameOrProp}"]`) || document.querySelector(`meta[property="${nameOrProp}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attrName, nameOrProp);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', value);
+    };
+
+    setMeta('description', 'name', description);
+    setMeta('title', 'name', title);
+    setMeta('og:title', 'property', title);
+    setMeta('og:description', 'property', description);
+    setMeta('og:url', 'property', canonical);
+    setMeta('og:image', 'property', ogImage);
+    setMeta('twitter:title', 'name', title);
+    setMeta('twitter:description', 'name', description);
+    setMeta('twitter:image', 'name', ogImage);
+
+    // Update canonical link
+    let canonicalLink = document.querySelector('link[rel="canonical"]');
+    if (!canonicalLink) {
+      canonicalLink = document.createElement('link');
+      canonicalLink.setAttribute('rel', 'canonical');
+      document.head.appendChild(canonicalLink);
+    }
+    canonicalLink.setAttribute('href', canonical);
+
+    // Update or insert JSON-LD script tag
+    let scriptTag = document.getElementById('scentory-ldjson');
+    if (!scriptTag) {
+      scriptTag = document.createElement('script');
+      scriptTag.id = 'scentory-ldjson';
+      scriptTag.type = 'application/ld+json';
+      document.head.appendChild(scriptTag);
+    }
+    if (jsonLdData) {
+      scriptTag.textContent = JSON.stringify(jsonLdData, null, 2);
+    }
+  }, [currentView, selectedProduct]);
 
   const handleSelectProduct = (product) => {
     setSelectedProduct(product);
@@ -202,7 +408,9 @@ function MainApp() {
         {currentView === 'product-detail' && (
           <ProductDetailView
             product={selectedProduct}
+            isLoading={isProductLoading}
             onBack={() => handleNavigate('shop')}
+            onBackToHome={() => handleNavigate('home')}
             onCheckoutNow={() => handleNavigate('checkout')}
           />
         )}

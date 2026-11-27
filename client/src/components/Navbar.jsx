@@ -88,8 +88,9 @@ export default function Navbar({ currentView, setCurrentView, openAuthModal, onO
             </button>
 
             {/* Brand Logo & Name */}
-            <div
-              onClick={() => handleNav('home')}
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); handleNav('home'); }}
               className="flex items-center gap-2 sm:gap-3 cursor-pointer group flex-shrink min-w-0 select-none"
             >
               <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-full overflow-hidden border border-[#d4af37]/50 p-0.5 bg-black/80 shadow-[0_0_12px_rgba(212,175,55,0.25)] group-hover:border-[#d4af37] transition-all flex-shrink-0">
@@ -110,35 +111,38 @@ export default function Navbar({ currentView, setCurrentView, openAuthModal, onO
                   Signature Fragrances
                 </span>
               </div>
-            </div>
+            </a>
           </div>
 
           {/* Center (Desktop Only): Quick Nav Links */}
           <nav className="hidden md:flex items-center gap-8 text-xs tracking-widest uppercase font-semibold">
-            <button
-              onClick={() => handleNav('home')}
+            <a
+              href="/"
+              onClick={(e) => { e.preventDefault(); handleNav('home'); }}
               className={`transition-colors hover:text-[#d4af37] cursor-pointer pb-0.5 ${
                 currentView === 'home' ? 'text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-gray-300'
               }`}
             >
               Home
-            </button>
-            <button
-              onClick={() => handleNav('shop')}
+            </a>
+            <a
+              href="/shop"
+              onClick={(e) => { e.preventDefault(); handleNav('shop'); }}
               className={`transition-colors hover:text-[#d4af37] cursor-pointer pb-0.5 ${
                 currentView === 'shop' ? 'text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-gray-300'
               }`}
             >
               All Fragrances
-            </button>
-            <button
-              onClick={() => handleNav('reviews')}
+            </a>
+            <a
+              href="/reviews"
+              onClick={(e) => { e.preventDefault(); handleNav('reviews'); }}
               className={`transition-colors hover:text-[#d4af37] cursor-pointer pb-0.5 ${
                 currentView === 'reviews' ? 'text-[#d4af37] border-b-2 border-[#d4af37]' : 'text-gray-300'
               }`}
             >
               Customer Reviews
-            </button>
+            </a>
           </nav>
 
           {/* Right: Desktop Actions Only (Hidden on Mobile) */}
@@ -296,17 +300,10 @@ export default function Navbar({ currentView, setCurrentView, openAuthModal, onO
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentView === item.view && (!item.subTab || currentView === 'profile');
+                  const itemHref = item.view === 'home' ? '/' : (item.view === 'shop' ? '/shop' : (item.view === 'reviews' ? '/reviews' : null));
 
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNav(item.view, item.subTab)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-all cursor-pointer group ${
-                        isActive
-                          ? 'bg-gradient-to-r from-[#d4af37]/25 via-[#d4af37]/10 to-transparent border border-[#d4af37]/50 text-[#fcf6ba] font-bold shadow-[0_0_15px_rgba(212,175,55,0.2)]'
-                          : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
-                      }`}
-                    >
+                  const content = (
+                    <>
                       <div className="flex items-center gap-3.5">
                         <Icon className={`w-5 h-5 transition-colors ${
                           isActive ? 'text-[#d4af37]' : (item.id === 'favourites' && favouritesCount > 0 ? 'text-rose-400 fill-rose-500' : 'text-gray-400 group-hover:text-[#d4af37]')
@@ -326,6 +323,38 @@ export default function Navbar({ currentView, setCurrentView, openAuthModal, onO
                           isActive ? 'text-[#d4af37] translate-x-1' : 'text-gray-500 group-hover:translate-x-1'
                         }`} />
                       </div>
+                    </>
+                  );
+
+                  const commonClasses = `w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-all cursor-pointer group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-[#d4af37]/25 via-[#d4af37]/10 to-transparent border border-[#d4af37]/50 text-[#fcf6ba] font-bold shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                      : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`;
+
+                  if (itemHref) {
+                    return (
+                      <a
+                        key={item.id}
+                        href={itemHref}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleNav(item.view, item.subTab);
+                        }}
+                        className={commonClasses}
+                      >
+                        {content}
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNav(item.view, item.subTab)}
+                      className={commonClasses}
+                    >
+                      {content}
                     </button>
                   );
                 })}
