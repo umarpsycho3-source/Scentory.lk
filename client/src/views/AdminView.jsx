@@ -4049,164 +4049,7 @@ export default function AdminView({ onBackToShop }) {
                   )}
                 </div>
 
-                {/* 3. ONE-CLICK PRESET BUTTONS */}
-                <div className="space-y-3">
-                  <label className="block text-xs font-bold text-[#fcf6ba] uppercase tracking-wider">
-                    Quick Preset Configurations (1-Click Setup)
-                  </label>
-                  <p className="text-xs text-gray-400">
-                    Click any popular promotion formula below to automatically populate the rules and announcements:
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      {
-                        label: 'Buy 1 Get 1 Free',
-                        buy: 1,
-                        free: 1,
-                        badge: 'BUY 1 GET 1 FREE',
-                        desc: 'Classic BOGO. For every 2 perfumes added, 1 is free.'
-                      },
-                      {
-                        label: 'Buy 2 Get 1 Free',
-                        buy: 2,
-                        free: 1,
-                        badge: 'BUY 2 GET 1 FREE',
-                        desc: 'Best seller deal. For every 3 perfumes added, 1 is free.'
-                      },
-                      {
-                        label: 'Buy 2 Get 3 Free',
-                        buy: 2,
-                        free: 3,
-                        badge: 'BUY 2 GET 3 FREE',
-                        desc: 'Mega deal! For every 5 perfumes added, 3 are free.'
-                      },
-                      {
-                        label: 'Buy 3 Get 1 Free',
-                        buy: 3,
-                        free: 1,
-                        badge: 'BUY 3 GET 1 FREE',
-                        desc: 'Bundle deal. For every 4 perfumes added, 1 is free.'
-                      }
-                    ].map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setSettings(prev => ({
-                            ...prev,
-                            promotionalDeal: {
-                              ...(prev?.promotionalDeal || {}),
-                              title: preset.label,
-                              buyQty: preset.buy,
-                              freeQty: preset.free,
-                              badgeText: preset.badge,
-                              bannerText: `Special Promotion: ${preset.label}! Purchase qualifying perfumes and enjoy free fragrances calculated automatically at checkout.`,
-                              showBanner: true
-                            }
-                          }));
-                        }}
-                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          settings?.promotionalDeal?.buyQty === preset.buy && settings?.promotionalDeal?.freeQty === preset.free
-                            ? 'bg-[#d4af37]/20 border-[#d4af37] text-white shadow-lg'
-                            : 'bg-black/30 border-white/10 hover:border-white/30 text-gray-300'
-                        }`}
-                      >
-                        <div className="font-bold text-xs uppercase text-[#d4af37] flex items-center justify-between">
-                          <span>{preset.label}</span>
-                          {settings?.promotionalDeal?.buyQty === preset.buy && settings?.promotionalDeal?.freeQty === preset.free && (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          )}
-                        </div>
-                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
-                          {preset.desc}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. RULE SPECIFICATIONS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                      Buy Quantity (Number of Bottles Customer Pays For) *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={settings?.promotionalDeal?.buyQty || 2}
-                        onChange={(e) => {
-                          const val = Math.max(1, parseInt(e.target.value) || 1);
-                          setSettings(prev => ({
-                            ...prev,
-                            promotionalDeal: {
-                              ...(prev?.promotionalDeal || {}),
-                              buyQty: val
-                            }
-                          }));
-                        }}
-                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-[#d4af37] focus:outline-none"
-                        required
-                      />
-                      <span className="absolute right-4 top-3.5 text-xs text-gray-500 font-semibold uppercase">Bottles</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400">
-                      e.g. In "Buy 2 Get 3 Free", enter <strong>2</strong>.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                      Free Quantity (Number of Bottles Given For Free) *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={settings?.promotionalDeal?.freeQty || 1}
-                        onChange={(e) => {
-                          const val = Math.max(1, parseInt(e.target.value) || 1);
-                          setSettings(prev => ({
-                            ...prev,
-                            promotionalDeal: {
-                              ...(prev?.promotionalDeal || {}),
-                              freeQty: val
-                            }
-                          }));
-                        }}
-                        className="w-full bg-[#181822] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-[#d4af37] focus:outline-none"
-                        required
-                      />
-                      <span className="absolute right-4 top-3.5 text-xs text-gray-500 font-semibold uppercase">Free Bottles</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400">
-                      e.g. In "Buy 2 Get 3 Free", enter <strong>3</strong>.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mathematical Formula Explanation Card */}
-                <div className="p-4 rounded-xl bg-[#14141c] border border-[#d4af37]/30 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#d4af37]/20 flex items-center justify-center flex-shrink-0 text-[#d4af37]">
-                    <Percent className="w-4 h-4" />
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <span className="font-bold text-[#fcf6ba] uppercase tracking-wider block">
-                      Active Mathematical Calculation Logic
-                    </span>
-                    <p className="text-gray-300 leading-relaxed">
-                      Every group of <strong className="text-white">{(Number(settings?.promotionalDeal?.buyQty || 2) + Number(settings?.promotionalDeal?.freeQty || 1))} bottles</strong> in a customer's cart unlocks <strong className="text-emerald-400">{Number(settings?.promotionalDeal?.freeQty || 1)} free bottle(s)</strong>.
-                    </p>
-                    <p className="text-gray-400 text-[11px]">
-                      The system sorts all selected bottle sizes by price and systematically applies 100% discount (Rs. 0) to the {Number(settings?.promotionalDeal?.freeQty || 1)} lowest-priced item(s).
-                    </p>
-                  </div>
-                </div>
-
-                {/* 4. ANNOUNCEMENT & BADGE TEXTS */}
+                {/* 3. ANNOUNCEMENT & BADGE TEXTS */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -4299,7 +4142,7 @@ export default function AdminView({ onBackToShop }) {
                   </div>
                 </div>
 
-                {/* 5. PROMOTIONAL FLYER / POSTER IMAGE (FOR HOME PAGE SHOWCASE CARD) */}
+                {/* 4. PROMOTIONAL FLYER / POSTER IMAGE (FOR HOME PAGE SHOWCASE CARD) */}
                 <div className="p-5 rounded-2xl bg-black/40 border border-white/10 space-y-4">
                   <div>
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -4367,7 +4210,7 @@ export default function AdminView({ onBackToShop }) {
                   )}
                 </div>
 
-                {/* 6. LIVE CUSTOMER PREVIEW */}
+                {/* 5. LIVE CUSTOMER PREVIEW */}
                 <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-3">
                   <div className="flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
                     <span>Live Customer Preview (How it appears on website)</span>

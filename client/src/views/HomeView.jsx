@@ -297,15 +297,15 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                     <div className="p-4 rounded-2xl bg-black/40 border border-emerald-500/20 space-y-2.5">
                       <div className="flex items-center gap-2.5 text-xs text-gray-200">
                         <Sparkles className="w-4 h-4 text-[#d4af37] flex-shrink-0" />
-                        <span>Add any <strong>{(Number(promotionalDeal.buyQty || 2) + Number(promotionalDeal.freeQty || 1))} bottles</strong> to cart</span>
+                        <span>Exclusive promotional luxury pricing across our artisan collection</span>
                       </div>
                       <div className="flex items-center gap-2.5 text-xs text-gray-200">
                         <Gift className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span><strong>{Number(promotionalDeal.freeQty || 1)} lowest-priced bottle</strong> is automatically <strong>Rs. 0 (FREE)</strong></span>
+                        <span>Complimentary promotional savings auto-applied at checkout</span>
                       </div>
                       <div className="flex items-center gap-2.5 text-xs text-gray-200">
                         <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span>Real-time mathematical savings applied at checkout</span>
+                        <span>100% authentic extrait de parfum atomizers & flacons</span>
                       </div>
                     </div>
 
