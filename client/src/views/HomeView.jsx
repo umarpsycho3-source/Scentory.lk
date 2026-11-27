@@ -103,18 +103,36 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
         if (Array.isArray(featured)) setFeaturedProducts(featured);
         if (Array.isArray(trending)) setTrendingProducts(trending);
 
-        // Only show products where isSpecialOffer is explicitly ticked by store admin
-        let discounted = [];
-        if (Array.isArray(offersData) && offersData.length > 0) {
-          discounted = offersData.filter(p => p.isSpecialOffer === true);
-        } else if (Array.isArray(allProducts)) {
-          discounted = allProducts.filter(p => p.isSpecialOffer === true);
-        }
-        setOfferProducts(discounted);
-
         if (settingsData && settingsData.promotionalDeal) {
           setPromotionalDeal(settingsData.promotionalDeal);
         }
+
+        const activeDeal = settingsData?.promotionalDeal || promotionalDeal;
+
+        // Populate offer products matching:
+        // 1. Explicitly enabled isSpecialOffer === true
+        // 2. Part of active promotional deal (Buy X Get Y Free)
+        // 3. Has discounted variant pricing (unless explicitly marked with isSpecialOffer === false)
+        let discounted = [];
+        if (Array.isArray(offersData) && offersData.length > 0) {
+          discounted = offersData;
+        } else if (Array.isArray(allProducts) && allProducts.length > 0) {
+          discounted = allProducts.filter(p => {
+            if (p.isSpecialOffer === true) return true;
+            if (p.isSpecialOffer === false) return false;
+            if (activeDeal && activeDeal.enabled && activeDeal.appliesTo === 'specific' && Array.isArray(activeDeal.applicableProductIds) && activeDeal.applicableProductIds.map(String).includes(String(p.id))) {
+              return true;
+            }
+            return Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
+          });
+        }
+
+        // If no products meet discounted criteria yet, display featured products as fallback
+        if (discounted.length === 0 && Array.isArray(allProducts) && allProducts.length > 0) {
+          discounted = allProducts.slice(0, 4);
+        }
+
+        setOfferProducts(discounted);
 
         if (reviewsData && reviewsData.reviews) {
           // Exactly 5 reviews on Home page as explicitly requested by user
@@ -260,10 +278,17 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                 </div>
               </div>
               <button
-                onClick={onExploreShop}
+                onClick={() => {
+                  const el = document.getElementById('special-offers-grid');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  } else {
+                    onExploreShop();
+                  }
+                }}
                 className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 cursor-pointer shadow-lg"
               >
-                <span>Shop Fragrances</span>
+                <span>View Deal Fragrances</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -271,7 +296,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
 
           {/* If there are offer products */}
           {offerProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+            <div id="special-offers-grid" className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 scroll-mt-24">
               {offerProducts.map((product) => {
                 const discountedVariants = (product.variants || []).filter(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
                 const lowestDiscountedPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
@@ -280,6 +305,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                 const savings = originalPrice > lowestDiscountedPrice ? originalPrice - lowestDiscountedPrice : 0;
                 const discountPct = originalPrice > lowestDiscountedPrice ? Math.round(((originalPrice - lowestDiscountedPrice) / originalPrice) * 100) : 0;
                 const isFav = isFavourite(product.id);
+                const isDeal = isProductDealEligible(product.id);
 
                 return (
                   <div
@@ -289,15 +315,32 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                   >
                     {/* Top Discount Badge Banner */}
                     <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 items-start">
-                      <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white font-extrabold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-lg flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        <span>{discountPct > 0 ? `${discountPct}% OFF` : 'ON SALE'}</span>
-                      </div>
-                      {savings > 0 && (
+                      {discountPct > 0 ? (
+                        <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white font-extrabold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-lg flex items-center gap-1">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          <span>{discountPct}% OFF</span>
+                        </div>
+                      ) : isDeal ? (
+                        <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-extrabold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-lg flex items-center gap-1">
+                          <Gift className="w-2.5 h-2.5" />
+                          <span>{promotionalDeal?.badgeText || 'SPECIAL DEAL'}</span>
+                        </div>
+                      ) : (
+                        <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-rose-600 to-amber-500 text-white font-extrabold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-lg flex items-center gap-1">
+                          <Tag className="w-2.5 h-2.5" />
+                          <span>EXCLUSIVE OFFER</span>
+                        </div>
+                      )}
+
+                      {savings > 0 ? (
                         <div className="px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md border border-[#d4af37]/40 text-[#f3e5ab] text-[8px] sm:text-[9px] font-mono font-semibold">
                           Save Rs. {savings.toLocaleString()}
                         </div>
-                      )}
+                      ) : isDeal ? (
+                        <div className="px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md border border-emerald-500/40 text-emerald-300 text-[8px] sm:text-[9px] font-mono font-semibold">
+                          {promotionalDeal?.title || 'Free Bottle Deal'}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
@@ -352,7 +395,9 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
 
                       <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
                         <span className="text-[9px] sm:text-[10px] text-gray-400">
-                          {discountedVariants.length} discounted {discountedVariants.length === 1 ? 'size' : 'sizes'}
+                          {discountedVariants.length > 0
+                            ? `${discountedVariants.length} discounted ${discountedVariants.length === 1 ? 'size' : 'sizes'}`
+                            : (isDeal ? (promotionalDeal?.badgeText || 'Deal Qualifying') : `${(product.variants || []).length} available sizes`)}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#f3e5ab] group-hover:translate-x-0.5 transition-transform">
                           <span>Claim Deal</span>

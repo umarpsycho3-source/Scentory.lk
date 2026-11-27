@@ -141,7 +141,27 @@ router.get('/featured', async (req, res) => {
 router.get('/offers', async (req, res) => {
   try {
     const products = db.getProducts();
-    const offers = products.filter(p => p.isSpecialOffer === true);
+    const settings = db.getSettings();
+    const deal = settings?.promotionalDeal;
+
+    const offers = products.filter(p => {
+      // 1. Explicitly enabled by admin
+      if (p.isSpecialOffer === true) return true;
+      // 2. Explicitly disabled by admin
+      if (p.isSpecialOffer === false) return false;
+      // 3. In active promotional deal
+      if (deal && deal.enabled) {
+        if (deal.appliesTo === 'specific' && Array.isArray(deal.applicableProductIds) && deal.applicableProductIds.map(String).includes(String(p.id))) {
+          return true;
+        }
+      }
+      // 4. Products with variant discount pricing
+      const hasDiscount = Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
+      if (hasDiscount) return true;
+
+      return false;
+    });
+
     res.json(offers);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching fragrance offers.' });
