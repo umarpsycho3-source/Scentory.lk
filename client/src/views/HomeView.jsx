@@ -9,6 +9,7 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [offerProducts, setOfferProducts] = useState([]);
+  const [dealProducts, setDealProducts] = useState([]);
   const [promotionalDeal, setPromotionalDeal] = useState(() => {
     try {
       const cached = localStorage.getItem('scentory_settings');
@@ -109,10 +110,23 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
 
         const activeDeal = settingsData?.promotionalDeal || promotionalDeal;
 
+        // Populate dedicated deal products (Buy X Get Y Free)
+        if (activeDeal && activeDeal.enabled && Array.isArray(allProducts)) {
+          const eligible = allProducts.filter(p => {
+            if (activeDeal.appliesTo === 'specific') {
+              const applicable = Array.isArray(activeDeal.applicableProductIds) ? activeDeal.applicableProductIds.map(String) : [];
+              return applicable.includes(String(p.id));
+            }
+            return true; // storewide
+          });
+          setDealProducts(eligible);
+        } else {
+          setDealProducts([]);
+        }
+
         // Populate offer products matching:
         // 1. Explicitly enabled isSpecialOffer === true
-        // 2. Part of active promotional deal (Buy X Get Y Free)
-        // 3. Has discounted variant pricing (unless explicitly marked with isSpecialOffer === false)
+        // 2. Has discounted variant pricing (unless explicitly marked with isSpecialOffer === false)
         let discounted = [];
         if (Array.isArray(offersData) && offersData.length > 0) {
           discounted = offersData;
@@ -120,9 +134,6 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
           discounted = allProducts.filter(p => {
             if (p.isSpecialOffer === true) return true;
             if (p.isSpecialOffer === false) return false;
-            if (activeDeal && activeDeal.enabled && activeDeal.appliesTo === 'specific' && Array.isArray(activeDeal.applicableProductIds) && activeDeal.applicableProductIds.map(String).includes(String(p.id))) {
-              return true;
-            }
             return Array.isArray(p.variants) && p.variants.some(v => v.discountPrice && Number(v.discountPrice) < Number(v.price));
           });
         }
@@ -225,7 +236,120 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
         </div>
       </section>
 
-      {/* SPECIAL OFFERS & PROMOTIONAL DEALS SECTION (UNDER HERO) */}
+      {/* 1. DEDICATED DIVIDED SECTION: BUY X GET Y FREE PROMOTIONAL DEALS (UNDER HERO, ABOVE EXCLUSIVE OFFERS) */}
+      {promotionalDeal?.enabled && dealProducts.length > 0 && (
+        <section id="promotional-deals-section" className="py-12 sm:py-16 bg-gradient-to-b from-[#09150e] via-[#0d1419] to-[#0c0c11] border-b border-emerald-500/25 relative overflow-hidden">
+          {/* Emerald & Gold Ambient Glows */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[130px] pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-[#d4af37]/8 rounded-full blur-[130px] pointer-events-none" />
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10 gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-[10px] sm:text-xs uppercase tracking-[0.2em] font-semibold mb-2.5 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                  <Gift className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+                  <span>{promotionalDeal.badgeText || 'SPECIAL PROMOTION'}</span>
+                </div>
+                <h2 className="font-serif-luxury text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-wide flex flex-wrap items-center gap-3">
+                  <span>{promotionalDeal.title}</span>
+                  <span className="text-[10px] sm:text-xs font-sans font-bold px-2.5 py-0.5 rounded-full bg-[#d4af37] text-black uppercase tracking-wider shadow">
+                    Auto-Applied in Cart
+                  </span>
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-300 mt-1.5 max-w-2xl font-light leading-relaxed">
+                  {promotionalDeal.bannerText}
+                </p>
+              </div>
+
+              <button
+                onClick={() => onExploreShop({ filter: 'deals' })}
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-emerald-300 hover:text-white group cursor-pointer flex-shrink-0"
+              >
+                <span>View All In Store ({dealProducts.length})</span>
+                <ChevronRight className="w-4 h-4 text-emerald-400 transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
+
+            {/* Small Compact Luxury Product Cards Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-4">
+              {dealProducts.map((product) => {
+                const lowestPrice = Math.min(...(product.variants || []).map(v => v.discountPrice || v.price));
+                const isFav = isFavourite(product.id);
+
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => onSelectProduct(product)}
+                    className="group glass-panel rounded-xl sm:rounded-2xl overflow-hidden border border-emerald-500/30 hover:border-[#d4af37] transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1 shadow-lg hover:shadow-emerald-950/50 bg-[#0d1214] relative"
+                  >
+                    {/* Compact Image Container */}
+                    <div className="relative aspect-[4/5] overflow-hidden bg-black/60">
+                      <img
+                        src={product.images?.[0]}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-106"
+                      />
+
+                      {/* Top Deal Pill */}
+                      <div className="absolute top-2 left-2 z-20">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold text-[8px] sm:text-[9px] uppercase tracking-wider shadow flex items-center gap-1">
+                          <Gift className="w-2.5 h-2.5" />
+                          <span>ELIGIBLE</span>
+                        </span>
+                      </div>
+
+                      {/* Favourite Heart */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavourite(product.id);
+                        }}
+                        className="absolute top-2 right-2 z-20 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow cursor-pointer"
+                      >
+                        <Heart className={`w-3 h-3 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
+                      </button>
+
+                      {/* Bottom Price Pill */}
+                      <div className="absolute bottom-1.5 inset-x-1.5 p-1 sm:p-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 flex items-center justify-between text-[8px] sm:text-[10px]">
+                        <span className="text-gray-400 uppercase">From</span>
+                        <span className="font-serif-luxury font-bold text-emerald-300 font-mono">
+                          Rs. {lowestPrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Compact Details */}
+                    <div className="p-2 sm:p-3 flex-1 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[8px] sm:text-[9px] text-[#d4af37] uppercase tracking-wider block truncate">
+                          {product.scentFamily}
+                        </span>
+                        <h4 className="font-serif-luxury text-xs sm:text-sm font-bold text-white group-hover:text-[#d4af37] transition-colors truncate leading-tight mt-0.5">
+                          {product.name}
+                        </h4>
+                      </div>
+
+                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between">
+                        <span className="text-[8px] sm:text-[9px] text-gray-400">
+                          {(product.variants || []).length} sizes
+                        </span>
+                        <span className="text-[8px] sm:text-[10px] font-bold text-[#fcf6ba] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                          <span>Claim</span>
+                          <ArrowRight className="w-2.5 h-2.5 text-[#d4af37]" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. EXCLUSIVE FRAGRANCE PROMOTIONS (SPECIAL OFFERS & VARIANT DISCOUNTS) */}
       <section id="special-offers-section" className="py-14 sm:py-20 bg-gradient-to-b from-[#120f0a]/90 via-[#0d0d14] to-[#0c0c11] border-b border-[#d4af37]/25 relative overflow-hidden">
         {/* Golden ambient backdrops */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#d4af37]/8 rounded-full blur-[130px] pointer-events-none" />
@@ -255,37 +379,6 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
               <ChevronRight className="w-4 h-4 text-[#d4af37] transition-transform group-hover:translate-x-1" />
             </button>
           </div>
-
-          {/* Active Buy X Get Y Free Deal Banner */}
-          {promotionalDeal?.enabled && promotionalDeal.showBanner && (
-            <div className="mb-10 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-[#1c1407] via-[#1a0f19] to-[#12111d] border border-[#d4af37]/40 shadow-[0_0_30px_rgba(212,175,55,0.15)] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#d4af37] to-[#aa820a] flex items-center justify-center flex-shrink-0 text-black shadow-lg">
-                  <Gift className="w-6 h-6 animate-bounce" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-[#d4af37] text-black uppercase tracking-wider shadow">
-                      {promotionalDeal.badgeText || 'SPECIAL PROMOTION'}
-                    </span>
-                    <strong className="text-white text-base sm:text-lg font-serif-luxury font-bold tracking-wide">
-                      {promotionalDeal.title}
-                    </strong>
-                  </div>
-                  <p className="text-xs text-gray-300 mt-1 font-light leading-relaxed">
-                    {promotionalDeal.bannerText}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => onExploreShop({ filter: 'deals' })}
-                className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-[#d4af37] via-[#fcf6ba] to-[#aa820a] text-black font-bold text-xs uppercase tracking-wider hover:opacity-95 transition-all flex items-center justify-center gap-2 flex-shrink-0 cursor-pointer shadow-lg"
-              >
-                <span>View Deal Fragrances</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
 
           {/* If there are offer products */}
           {offerProducts.length > 0 ? (
