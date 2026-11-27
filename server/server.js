@@ -75,6 +75,12 @@ app.get('/brand-logo.png', (req, res) => {
   res.status(404).send('Logo not found');
 });
 
+// Google Search Console Verification HTML
+app.get('/googlebf136b5ad5675810.html', (req, res) => {
+  res.type('text/html');
+  res.send('google-site-verification: googlebf136b5ad5675810.html');
+});
+
 // SEO: robots.txt for Google & search engine crawlers
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain');
