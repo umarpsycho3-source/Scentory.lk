@@ -149,7 +149,12 @@ function MainApp() {
           }
         ]
       };
-    } else if (currentView === 'product-detail' && selectedProduct) {
+    } else if (currentView === 'product-detail') {
+      if (!selectedProduct) {
+        // Keep the prerendered Product JSON-LD intact in the HTML; do not overwrite while fetching
+        return;
+      }
+
       title = `${selectedProduct.name} | Luxury Extrait De Parfum | SCENTORY.LK`;
       const family = selectedProduct.scentFamily ? ` (${selectedProduct.scentFamily})` : '';
       description = selectedProduct.description
@@ -205,6 +210,33 @@ function MainApp() {
               { '@type': 'ListItem', 'position': 2, 'name': 'All Fragrances', 'item': `${baseUrl}/shop` },
               { '@type': 'ListItem', 'position': 3, 'name': selectedProduct.name, 'item': `${baseUrl}/product/${selectedProduct.id}` }
             ]
+          },
+          {
+            '@type': 'OnlineStore',
+            '@id': `${baseUrl}/#store`,
+            'name': 'SCENTORY.LK',
+            'url': `${baseUrl}/`,
+            'logo': `${baseUrl}/brand-logo.png`,
+            'image': `${baseUrl}/brand-logo.png`,
+            'description': "Sri Lanka's dedicated house for authentic niche & designer perfume decants. Handcrafted into sterile clinical glass atomizers in Ulapane.",
+            'telephone': '+94763151311',
+            'priceRange': 'LKR 1,300 - LKR 25,000',
+            'currenciesAccepted': 'LKR',
+            'paymentAccepted': 'Bank Deposit, Online Bank Transfer',
+            'address': {
+              '@type': 'PostalAddress',
+              'streetAddress': 'Nawalapitiya Road',
+              'addressLocality': 'Ulapane',
+              'addressRegion': 'Central Province',
+              'addressCountry': 'LK'
+            }
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${baseUrl}/#website`,
+            'url': `${baseUrl}/`,
+            'name': 'SCENTORY.LK',
+            'description': 'Luxury Perfumes & Decants in Sri Lanka'
           }
         ]
       };

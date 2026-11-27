@@ -215,6 +215,46 @@ if (fs.existsSync(clientDist)) {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 
+  // Dynamic SSR Route for /product/:id with rich SEO structured data
+  app.get('/product/:id', async (req, res, next) => {
+    try {
+      const productId = req.params.id;
+      let product = null;
+
+      if (db && typeof db.getProductById === 'function') {
+        product = db.getProductById(productId);
+      }
+      if (!product && db && typeof db.ensureConnected === 'function') {
+        await db.ensureConnected();
+        product = db.getProductById(productId);
+      }
+
+      if (product) {
+        // Check for prerendered file first
+        const prerenderedPath = path.join(clientDist, 'product', productId, 'index.html');
+        if (fs.existsSync(prerenderedPath)) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, must-revalidate');
+          return res.sendFile(prerenderedPath);
+        }
+
+        // Dynamically inject into template HTML
+        const templatePath = path.join(clientDist, 'index.html');
+        if (fs.existsSync(templatePath)) {
+          const { injectProductMeta } = require('./seoHelper');
+          const rawHtml = fs.readFileSync(templatePath, 'utf8');
+          const enrichedHtml = injectProductMeta(rawHtml, product, 'https://scentory-lk.vercel.app');
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, must-revalidate');
+          return res.status(200).send(enrichedHtml);
+        }
+      }
+    } catch (err) {
+      console.error('SSR /product/:id error:', err.message);
+    }
+    next();
+  });
+
   // Express 5 compatible SPA fallback
   app.use((req, res, next) => {
     if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {

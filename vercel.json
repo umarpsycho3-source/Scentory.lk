@@ -28,6 +28,18 @@
       "destination": "/brand-logo.png"
     },
     {
+      "source": "/product/:id",
+      "destination": "/product/:id/index.html"
+    },
+    {
+      "source": "/shop",
+      "destination": "/shop/index.html"
+    },
+    {
+      "source": "/reviews",
+      "destination": "/reviews/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
