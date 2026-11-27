@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, MessageSquare, Plus, Camera, Heart, Tag, Percent, Gift } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Truck, Droplets, Flame, Award, ChevronRight, Star, CheckCircle2, Check, MessageSquare, Plus, Camera, Heart, Tag, Percent, Gift } from 'lucide-react';
 import HeroPerfumeVideo from '../components/HeroPerfumeVideo';
 import AddReviewModal from '../components/AddReviewModal';
 import { useFavourites } from '../context/FavouritesContext';
