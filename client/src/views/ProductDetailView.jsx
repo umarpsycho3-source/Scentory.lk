@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Check, ShoppingBag, Zap, ShieldCheck, Truck, RefreshCw, MessageCircle, Heart, Star, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, ShoppingBag, Zap, ShieldCheck, Truck, RefreshCw, MessageCircle, Heart, Star, Sparkles, Gift } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 
 export default function ProductDetailView({ product, onBack, onCheckoutNow }) {
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart, setIsCartOpen, promotionalDeal, isProductDealEligible } = useCart();
   const { toggleFavourite, isFavourite } = useFavourites();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
@@ -156,6 +156,28 @@ export default function ProductDetailView({ product, onBack, onCheckoutNow }) {
               {product.tagline}
             </p>
           </div>
+
+          {/* Deal Callout if Product is Eligible */}
+          {isProductDealEligible && isProductDealEligible(product.id) && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-black/80 to-emerald-950/70 border border-emerald-500/50 flex items-center gap-3.5 shadow-lg animate-in fade-in">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-black flex items-center justify-center font-bold flex-shrink-0 shadow">
+                <Gift className="w-5 h-5 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500 text-black uppercase tracking-wider">
+                    {promotionalDeal?.badgeText || 'SPECIAL OFFER'}
+                  </span>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider truncate">
+                    {promotionalDeal?.title || 'Promotional Deal'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-200 mt-0.5 leading-relaxed">
+                  Purchase this perfume to qualify towards free bottles calculated automatically at checkout!
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* DYNAMIC LIVE PRICE DISPLAY (Responsive & Perfectly Aligned on All Screens) */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#17161c] to-[#121216] border border-[#d4af37]/35 space-y-3 shadow-lg">

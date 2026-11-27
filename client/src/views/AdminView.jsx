@@ -148,6 +148,7 @@ export default function AdminView({ onBackToShop }) {
   const [productForm, setProductForm] = useState(initialProductForm);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [dealProductSearch, setDealProductSearch] = useState('');
 
   // Live Auto-Refresh & Auto-Sync State
   const [autoSyncInterval, setAutoSyncInterval] = useState(() => {
@@ -953,6 +954,15 @@ export default function AdminView({ onBackToShop }) {
       if (!payload.storeName || !payload.storeName.trim()) {
         alert('Please provide a store brand name.');
         return;
+      }
+      if (payload.promotionalDeal?.enabled && payload.promotionalDeal?.appliesTo === 'specific') {
+        const selected = Array.isArray(payload.promotionalDeal?.applicableProductIds)
+          ? payload.promotionalDeal.applicableProductIds
+          : [];
+        if (selected.length === 0) {
+          alert('Please select at least one fragrance to apply this promotion to, or switch to "All Fragrances (Storewide)".');
+          return;
+        }
       }
       payload.deliveryFee = Math.max(0, Number(payload.deliveryFee) || 0);
       payload.bankDetails = {
@@ -2761,6 +2771,15 @@ export default function AdminView({ onBackToShop }) {
                               <span>Offer Active</span>
                             </span>
                           )}
+                          {settings?.promotionalDeal?.enabled && (
+                            settings?.promotionalDeal?.appliesTo === 'all' ||
+                            (settings?.promotionalDeal?.applicableProductIds || []).map(String).includes(String(product.id))
+                          ) && (
+                            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-700/95 text-white uppercase tracking-wider shadow flex items-center gap-1">
+                              <Gift className="w-2.5 h-2.5" />
+                              <span>{settings?.promotionalDeal?.badgeText || 'Deal Active'}</span>
+                            </span>
+                          )}
                         </div>
 
                         <span className="text-[10px] text-[#d4af37] uppercase tracking-wider">{product.scentFamily} • {product.gender}</span>
@@ -3051,6 +3070,36 @@ export default function AdminView({ onBackToShop }) {
                             />
                             <span className="font-semibold">Display in Special Offers Section</span>
                           </label>
+
+                          {settings?.promotionalDeal?.enabled && settings?.promotionalDeal?.appliesTo === 'specific' && editingProduct && (
+                            <label className="flex items-center gap-2 cursor-pointer text-xs text-emerald-300 bg-emerald-950/40 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(
+                                  (settings?.promotionalDeal?.applicableProductIds || []).map(String).includes(String(editingProduct.id))
+                                )}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  const curIds = (settings?.promotionalDeal?.applicableProductIds || []).map(String);
+                                  const nextIds = checked
+                                    ? [...new Set([...curIds, String(editingProduct.id)])]
+                                    : curIds.filter(id => id !== String(editingProduct.id));
+                                  setSettings(prev => ({
+                                    ...prev,
+                                    promotionalDeal: {
+                                      ...(prev?.promotionalDeal || {}),
+                                      applicableProductIds: nextIds
+                                    }
+                                  }));
+                                }}
+                                className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
+                              />
+                              <span className="font-semibold flex items-center gap-1">
+                                <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Include in {settings?.promotionalDeal?.title || 'Promotional Deal'}</span>
+                              </span>
+                            </label>
+                          )}
                         </div>
                       </div>
 
@@ -3690,7 +3739,7 @@ export default function AdminView({ onBackToShop }) {
                   <div>
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#d4af37]" />
-                      <span>Enable Storewide Deal</span>
+                      <span>Enable Promotional Deal</span>
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
                       When turned on, the promotion banner appears on the website and eligible cart items automatically get discounted.
@@ -3716,7 +3765,204 @@ export default function AdminView({ onBackToShop }) {
                   </label>
                 </div>
 
-                {/* 2. ONE-CLICK PRESET BUTTONS */}
+                {/* 2. DEAL APPLICABILITY SCOPE & PRODUCT PICKER */}
+                <div className="p-5 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-[#d4af37]" />
+                        <span>Eligible Products & Fragrances</span>
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Choose whether this promotional deal applies storewide to all perfumes or only to specific selected products.
+                      </p>
+                    </div>
+
+                    {/* Scope toggle buttons */}
+                    <div className="flex rounded-xl bg-[#14141c] p-1 border border-white/10 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              appliesTo: 'all'
+                            }
+                          }));
+                        }}
+                        className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          (settings?.promotionalDeal?.appliesTo || 'all') === 'all'
+                            ? 'bg-[#d4af37] text-black shadow-md'
+                            : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        All Fragrances (Storewide)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSettings(prev => ({
+                            ...prev,
+                            promotionalDeal: {
+                              ...(prev?.promotionalDeal || {}),
+                              appliesTo: 'specific'
+                            }
+                          }));
+                        }}
+                        className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          settings?.promotionalDeal?.appliesTo === 'specific'
+                            ? 'bg-[#d4af37] text-black shadow-md'
+                            : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        Specific Fragrances Only
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* If Specific Fragrances is selected, show Product Selector */}
+                  {settings?.promotionalDeal?.appliesTo === 'specific' && (
+                    <div className="mt-4 pt-4 border-t border-white/10 space-y-3 animate-in fade-in">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-300">
+                            Select products for this deal:
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#d4af37]/20 border border-[#d4af37]/40 text-[#fcf6ba]">
+                            {(settings?.promotionalDeal?.applicableProductIds || []).length} of {products.length} Selected
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allIds = products.map(p => String(p.id));
+                              setSettings(prev => ({
+                                ...prev,
+                                promotionalDeal: {
+                                  ...(prev?.promotionalDeal || {}),
+                                  applicableProductIds: allIds
+                                }
+                              }));
+                            }}
+                            className="text-[11px] font-semibold text-[#d4af37] hover:underline cursor-pointer"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-gray-600">|</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSettings(prev => ({
+                                ...prev,
+                                promotionalDeal: {
+                                  ...(prev?.promotionalDeal || {}),
+                                  applicableProductIds: []
+                                }
+                              }));
+                            }}
+                            className="text-[11px] font-semibold text-gray-400 hover:text-white cursor-pointer"
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-gray-400" />
+                        <input
+                          type="text"
+                          value={dealProductSearch}
+                          onChange={(e) => setDealProductSearch(e.target.value)}
+                          placeholder="Search fragrances by title or scent family..."
+                          className="w-full bg-[#181822] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-white text-xs focus:border-[#d4af37] focus:outline-none"
+                        />
+                      </div>
+
+                      {/* Scrollable list of products */}
+                      <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1 divide-y divide-white/5 bg-[#121218] p-2 rounded-xl border border-white/5">
+                        {products
+                          .filter(p => {
+                            if (!dealProductSearch.trim()) return true;
+                            const q = dealProductSearch.toLowerCase();
+                            return (p.name || '').toLowerCase().includes(q) || (p.scentFamily || '').toLowerCase().includes(q);
+                          })
+                          .map(p => {
+                            const isSelected = (settings?.promotionalDeal?.applicableProductIds || []).map(String).includes(String(p.id));
+                            return (
+                              <label
+                                key={p.id}
+                                className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#d4af37]/15 border-[#d4af37]/60 text-white'
+                                    : 'bg-black/30 border-transparent hover:border-white/10 text-gray-400'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      const cur = (settings?.promotionalDeal?.applicableProductIds || []).map(String);
+                                      const next = checked
+                                        ? [...new Set([...cur, String(p.id)])]
+                                        : cur.filter(id => id !== String(p.id));
+                                      setSettings(prev => ({
+                                        ...prev,
+                                        promotionalDeal: {
+                                          ...(prev?.promotionalDeal || {}),
+                                          applicableProductIds: next
+                                        }
+                                      }));
+                                    }}
+                                    className="w-4 h-4 rounded bg-[#181822] border-white/20 text-[#d4af37] focus:ring-0 cursor-pointer"
+                                  />
+                                  <img
+                                    src={Array.isArray(p.images) && p.images[0] ? p.images[0] : 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80'}
+                                    alt=""
+                                    className="w-9 h-9 object-cover rounded-lg border border-white/10 flex-shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-semibold text-white block truncate">
+                                      {p.name}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 block truncate">
+                                      {p.scentFamily || 'Fragrance'} • {p.variants?.length || 0} bottle sizes
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {isSelected ? (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/40">
+                                      ✓ Deal Applied
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-500">
+                                      Click to pick
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                      </div>
+
+                      {(settings?.promotionalDeal?.applicableProductIds || []).length === 0 && (
+                        <p className="text-[11px] text-rose-400 flex items-center gap-1.5 pt-1">
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>No products selected. Please select at least one fragrance above to apply this promotion to.</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. ONE-CLICK PRESET BUTTONS */}
                 <div className="space-y-3">
                   <label className="block text-xs font-bold text-[#fcf6ba] uppercase tracking-wider">
                     Quick Preset Configurations (1-Click Setup)
@@ -3979,12 +4225,17 @@ export default function AdminView({ onBackToShop }) {
                       <Gift className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold text-[#fcf6ba] uppercase tracking-wide">
                           {settings?.promotionalDeal?.title || 'Buy 2 Get 1 Free'}
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#d4af37] text-black uppercase">
                           {settings?.promotionalDeal?.badgeText || 'SPECIAL OFFER'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-white/10 text-gray-300">
+                          {settings?.promotionalDeal?.appliesTo === 'specific'
+                            ? `${(settings?.promotionalDeal?.applicableProductIds || []).length} Selected Perfumes`
+                            : 'All Fragrances'}
                         </span>
                       </div>
                       <p className="text-gray-300 text-[11px] mt-0.5 truncate">

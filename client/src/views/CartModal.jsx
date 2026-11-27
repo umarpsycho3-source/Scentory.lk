@@ -14,6 +14,7 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
     freeItemsCount,
     itemsNeeded,
     promotionalDeal,
+    isProductDealEligible,
     deliveryFee,
     finalTotal
   } = useCart();
@@ -92,9 +93,17 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
                       </button>
                     </div>
 
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-[#d4af37]/10 text-[#f3e5ab] border border-[#d4af37]/20 mt-1">
-                      {item.variantSize}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] bg-[#d4af37]/10 text-[#f3e5ab] border border-[#d4af37]/20">
+                        {item.variantSize}
+                      </span>
+                      {isProductDealEligible && isProductDealEligible(item.productId) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
+                          <Gift className="w-2.5 h-2.5" />
+                          <span>Deal Eligible</span>
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between mt-3">
                       {/* Quantity Stepper */}
@@ -147,7 +156,9 @@ export default function CartModal({ onCheckout, onContinueShopping }) {
               ) : promotionalDeal?.enabled && itemsNeeded > 0 ? (
                 <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                  <span>Add <strong>{itemsNeeded}</strong> more fragrance to activate <strong>{promotionalDeal.title}</strong>!</span>
+                  <span>
+                    Add <strong>{itemsNeeded}</strong> more {promotionalDeal.appliesTo === 'specific' ? 'eligible ' : ''}fragrance{itemsNeeded > 1 ? 's' : ''} to activate <strong>{promotionalDeal.title}</strong>!
+                  </span>
                 </div>
               ) : null}
 

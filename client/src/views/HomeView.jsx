@@ -19,6 +19,13 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
     } catch (e) {}
     return null;
   });
+
+  const isProductDealEligible = (productId) => {
+    if (!promotionalDeal || !promotionalDeal.enabled) return false;
+    if (promotionalDeal.appliesTo === 'all' || !promotionalDeal.appliesTo) return true;
+    const applicable = Array.isArray(promotionalDeal.applicableProductIds) ? promotionalDeal.applicableProductIds.map(String) : [];
+    return applicable.includes(String(productId));
+  };
   const [homeReviews, setHomeReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(5.0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -447,8 +454,16 @@ export default function HomeView({ onExploreShop, onSelectProduct, onOpenBankDet
                       <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-white/80 hover:text-rose-400'}`} />
                     </button>
 
-                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#aa820a] text-black font-bold text-[9px] sm:text-xs uppercase tracking-wider shadow-lg">
-                      {product.badge || 'Signature'}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      {isProductDealEligible(product.id) && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/70 text-emerald-300 font-bold text-[9px] sm:text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 w-fit">
+                          <Gift className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          <span>{promotionalDeal.badgeText || 'SPECIAL DEAL'}</span>
+                        </span>
+                      )}
+                      <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#aa820a] text-black font-bold text-[9px] sm:text-xs uppercase tracking-wider shadow-lg w-fit">
+                        {product.badge || 'Signature'}
+                      </div>
                     </div>
 
                     {/* Price overlay on bottom of image for mobile */}

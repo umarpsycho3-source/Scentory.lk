@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, Sparkles, Eye, ShoppingBag, Check, Zap, Tag, Heart } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, Eye, ShoppingBag, Check, Zap, Tag, Heart, Gift } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useFavourites } from '../context/FavouritesContext';
 
 export default function ShopView({ onSelectProduct, onQuickOrder }) {
-  const { addToCart } = useCart();
+  const { addToCart, promotionalDeal, isProductDealEligible } = useCart();
   const { toggleFavourite, isFavourite } = useFavourites();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -312,6 +312,12 @@ export default function ShopView({ onSelectProduct, onQuickOrder }) {
 
                   {/* Badges */}
                   <div className="absolute top-2 left-2 flex flex-col gap-1">
+                    {isProductDealEligible && isProductDealEligible(product.id) && (
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/70 text-emerald-300 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider w-fit shadow-md flex items-center gap-1">
+                        <Gift className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <span>{promotionalDeal?.badgeText || 'SPECIAL DEAL'}</span>
+                      </span>
+                    )}
                     {product.badge && (
                       <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold uppercase tracking-wider bg-[#d4af37] text-black shadow-lg">
                         {product.badge}

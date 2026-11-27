@@ -168,14 +168,21 @@ router.post('/', authenticateToken, async (req, res) => {
       const buyQty = Math.max(1, parseInt(deal.buyQty, 10) || 2);
       const freeQty = Math.max(1, parseInt(deal.freeQty, 10) || 1);
       const groupSize = buyQty + freeQty;
-      const totalUnits = validatedItems.reduce((acc, it) => acc + it.quantity, 0);
+      const appliesTo = deal.appliesTo || 'all';
+      const applicableProductIds = Array.isArray(deal.applicableProductIds) ? deal.applicableProductIds.map(String) : [];
+
+      const eligibleItems = (appliesTo === 'specific' && applicableProductIds.length > 0)
+        ? validatedItems.filter(it => applicableProductIds.includes(String(it.productId)))
+        : (appliesTo === 'specific' ? [] : validatedItems);
+
+      const totalUnits = eligibleItems.reduce((acc, it) => acc + it.quantity, 0);
 
       if (totalUnits >= groupSize) {
         const eligibleGroups = Math.floor(totalUnits / groupSize);
         const freeCount = eligibleGroups * freeQty;
 
         const unitPrices = [];
-        validatedItems.forEach(it => {
+        eligibleItems.forEach(it => {
           for (let i = 0; i < it.quantity; i++) {
             unitPrices.push(Number(it.price) || 0);
           }

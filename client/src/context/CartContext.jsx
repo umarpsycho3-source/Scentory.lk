@@ -138,18 +138,37 @@ export const CartProvider = ({ children }) => {
   let freeItemsCount = 0;
   let itemsNeeded = 0;
 
+  const isProductDealEligible = (productId) => {
+    if (!promotionalDeal || !promotionalDeal.enabled) return false;
+    if (promotionalDeal.appliesTo === 'all' || !promotionalDeal.appliesTo) return true;
+    const applicable = Array.isArray(promotionalDeal.applicableProductIds)
+      ? promotionalDeal.applicableProductIds.map(String)
+      : [];
+    return applicable.includes(String(productId));
+  };
+
   if (promotionalDeal && promotionalDeal.enabled) {
     const buyQty = Math.max(1, parseInt(promotionalDeal.buyQty, 10) || 2);
     const freeQty = Math.max(1, parseInt(promotionalDeal.freeQty, 10) || 1);
     const groupSize = buyQty + freeQty;
+    const appliesTo = promotionalDeal.appliesTo || 'all';
+    const applicableProductIds = Array.isArray(promotionalDeal.applicableProductIds)
+      ? promotionalDeal.applicableProductIds.map(String)
+      : [];
 
-    if (totalItemCount >= groupSize) {
-      const eligibleGroups = Math.floor(totalItemCount / groupSize);
+    const eligibleItems = (appliesTo === 'specific' && applicableProductIds.length > 0)
+      ? cart.filter(item => applicableProductIds.includes(String(item.productId)))
+      : (appliesTo === 'specific' ? [] : cart);
+
+    const totalEligibleCount = eligibleItems.reduce((acc, item) => acc + item.quantity, 0);
+
+    if (totalEligibleCount >= groupSize) {
+      const eligibleGroups = Math.floor(totalEligibleCount / groupSize);
       freeItemsCount = eligibleGroups * freeQty;
 
-      // Expand all units in cart sorted ascending by unit price (cheapest items are free)
+      // Expand all units in eligible items sorted ascending by unit price (cheapest items are free)
       const unitPrices = [];
-      cart.forEach(item => {
+      eligibleItems.forEach(item => {
         for (let i = 0; i < item.quantity; i++) {
           unitPrices.push(Number(item.price) || 0);
         }
@@ -162,11 +181,13 @@ export const CartProvider = ({ children }) => {
     }
 
     // Items needed to activate next free item tier
-    const remainder = totalItemCount % groupSize;
-    if (remainder === 0 && totalItemCount > 0) {
-      itemsNeeded = buyQty;
-    } else {
-      itemsNeeded = groupSize - remainder;
+    if (appliesTo !== 'specific' || applicableProductIds.length > 0) {
+      const remainder = totalEligibleCount % groupSize;
+      if (remainder === 0 && totalEligibleCount > 0) {
+        itemsNeeded = buyQty;
+      } else {
+        itemsNeeded = groupSize - remainder;
+      }
     }
   }
 
@@ -190,6 +211,7 @@ export const CartProvider = ({ children }) => {
       freeItemsCount,
       itemsNeeded,
       promotionalDeal,
+      isProductDealEligible,
       deliveryFee,
       finalTotal,
       totalItemCount,
